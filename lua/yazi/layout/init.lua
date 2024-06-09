@@ -1,6 +1,6 @@
 local NuiLayout = require("nui.layout")
-local MainPopup = require("yazi.layouts.popup").MainPopup
-local SidePopup = require("yazi.layouts.popup").SidePopup
+local MainPopup = require("yazi.layout.popup").MainPopup
+local SidePopup = require("yazi.layout.popup").SidePopup
 local config = require("yazi").config
 local opts_utils = require("utils.opts")
 

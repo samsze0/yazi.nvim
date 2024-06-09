@@ -53,7 +53,8 @@ M.Controller = Controller
 --
 ---@alias YaziCreateControllerOptions { name: string, extra_args?: ShellOpts, extra_env_vars?: ShellOpts, path?: string }
 ---@param opts? YaziCreateControllerOptions
-function Controller:new(opts)
+---@return YaziController
+function Controller.new(opts)
   opts = opts_utils.extend({
     path = vim.fn.getcwd(),
   }, opts)

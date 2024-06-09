@@ -4,7 +4,7 @@ local terminal_utils = require("utils.terminal")
 local config = require("yazi.config").config
 local jumplist = require("jumplist")
 local NuiEvent = require("nui.utils.autocmd").event
-local layouts = require("yazi.layouts")
+local layouts = require("yazi.layout")
 
 local _info = config.notifier.info
 local _warn = config.notifier.warn
