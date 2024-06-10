@@ -21,6 +21,7 @@ local base_popup_config = {
 
 ---@class YaziMainPopup: NuiPopup
 ---@field _yazi_keymaps table<string, string> Mappings of key to name (of the handler)
+---@field _maximised boolean
 local MainPopup = {}
 MainPopup.__index = MainPopup
 MainPopup.__is_class = true
@@ -43,6 +44,7 @@ function MainPopup.new(config)
   ---@cast obj YaziMainPopup
 
   obj._yazi_keymaps = {}
+  obj._maximised = false
 
   obj:on(NuiEvent.BufEnter, function() vim.cmd("startinsert!") end)
 
@@ -50,6 +52,12 @@ function MainPopup.new(config)
 end
 
 function MainPopup:focus() vim.api.nvim_set_current_win(self.winid) end
+
+---@return boolean
+function MainPopup:maximised() return self._maximised end
+
+---@param maximised boolean
+function MainPopup:set_maximised(maximised) self._maximised = maximised end
 
 ---@param key string
 ---@param name? string Purpose of the handler
@@ -90,6 +98,7 @@ function MainPopup:map_remote(popup, name, key, opts)
 end
 
 ---@class YaziSidePopup: NuiPopup
+---@field _maximised boolean
 local SidePopup = {}
 SidePopup.__index = SidePopup
 SidePopup.__is_class = true
@@ -104,10 +113,18 @@ function SidePopup.new(config)
   setmetatable(obj, SidePopup)
   ---@cast obj YaziSidePopup
 
+  obj._maximised = false
+
   return obj
 end
 
 function SidePopup:focus() vim.api.nvim_set_current_win(self.winid) end
+
+---@return boolean
+function SidePopup:maximised() return self._maximised end
+
+---@param maximised boolean
+function SidePopup:set_maximised(maximised) self._maximised = maximised end
 
 ---@return string[]
 function SidePopup:get_lines()

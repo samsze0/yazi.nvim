@@ -22,6 +22,7 @@ YaziController.new():start()
 ## TODO
 
 - Provide option to warn user if a keymap of a popup is being overridden
+- Support customizing helper layouts and popups
 
 ## License
 

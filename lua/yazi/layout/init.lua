@@ -67,20 +67,31 @@ M.dual_pane = function(opts)
 
   local popups = { main = main_popup, side = side_popup }
 
-  local layout = NuiLayout(
-    {
-      position = "50%",
-      relative = "editor",
-      size = {
-        width = "95%",
-        height = "95%",
-      },
-    },
-    NuiLayout.Box({
+  local layout_configs = {
+    default = NuiLayout.Box({
       NuiLayout.Box(main_popup, { size = "50%" }),
       NuiLayout.Box(side_popup, { size = "50%" }),
-    }, { dir = "row" })
-  )
+    }, { dir = "row" }),
+    maximised = {
+      main_popup = NuiLayout.Box({
+        NuiLayout.Box(main_popup, { size = "100%" }),
+        NuiLayout.Box(side_popup, { size = "0%" }),
+      }, {}),
+      side_popup = NuiLayout.Box({
+        NuiLayout.Box(main_popup, { size = "0%" }),
+        NuiLayout.Box(side_popup, { size = "100%" }),
+      }, {}),
+    },
+  }
+
+  local layout = NuiLayout({
+    position = "50%",
+    relative = "editor",
+    size = {
+      width = "95%",
+      height = "95%",
+    },
+  }, layout_configs.default)
 
   main_popup:map(
     config.keymaps.move_to_pane.right,
@@ -93,6 +104,30 @@ M.dual_pane = function(opts)
     config.keymaps.move_to_pane.left,
     function() vim.api.nvim_set_current_win(main_popup.winid) end
   )
+
+  main_popup:map(config.keymaps.toggle_maximise, "Toggle maximise", function()
+    if main_popup:maximised() then
+      layout:update(layout_configs.default)
+      main_popup:set_maximised(false)
+      side_popup:set_maximised(false)
+    else
+      layout:update(layout_configs.maximised.main_popup)
+      main_popup:set_maximised(true)
+      side_popup:set_maximised(false)
+    end
+  end)
+
+  side_popup:map("n", config.keymaps.toggle_maximise, function()
+    if side_popup:maximised() then
+      layout:update(layout_configs.default)
+      main_popup:set_maximised(false)
+      side_popup:set_maximised(false)
+    else
+      layout:update(layout_configs.maximised.side_popup)
+      main_popup:set_maximised(false)
+      side_popup:set_maximised(true)
+    end
+  end)
 
   return layout, popups
 end
@@ -125,21 +160,35 @@ M.triple_pane = function(opts)
 
   local popups = { main = main_popup, side = side_popups }
 
-  local layout = NuiLayout(
-    {
-      position = "50%",
-      relative = "editor",
-      size = {
-        width = "95%",
-        height = "95%",
-      },
-    },
-    NuiLayout.Box({
+  local layout_configs = {
+    default = NuiLayout.Box({
       NuiLayout.Box(main_popup, { size = "30%" }),
       NuiLayout.Box(side_popups.left, { size = "35%" }),
       NuiLayout.Box(side_popups.right, { size = "35%" }),
-    }, { dir = "row" })
-  )
+    }, { dir = "row" }),
+    maximised = {
+      main_popup = NuiLayout.Box({
+        NuiLayout.Box(main_popup, { size = "100%" }),
+      }, {}),
+      side_popups = {
+        left = NuiLayout.Box({
+          NuiLayout.Box(side_popups.left, { size = "100%" }),
+        }, {}),
+        right = NuiLayout.Box({
+          NuiLayout.Box(side_popups.right, { size = "100%" }),
+        }, {}),
+      },
+    },
+  }
+
+  local layout = NuiLayout({
+    position = "50%",
+    relative = "editor",
+    size = {
+      width = "95%",
+      height = "95%",
+    },
+  }, layout_configs.default)
 
   main_popup:map(
     config.keymaps.move_to_pane.right,
@@ -164,6 +213,48 @@ M.triple_pane = function(opts)
     config.keymaps.move_to_pane.left,
     function() vim.api.nvim_set_current_win(side_popups.left.winid) end
   )
+
+  main_popup:map(config.keymaps.toggle_maximise, "Toggle maximise", function()
+    if main_popup:maximised() then
+      layout:update(layout_configs.default)
+      main_popup:set_maximised(false)
+      side_popups.left:set_maximised(false)
+      side_popups.right:set_maximised(false)
+    else
+      layout:update(layout_configs.maximised.main_popup)
+      main_popup:set_maximised(true)
+      side_popups.left:set_maximised(false)
+      side_popups.right:set_maximised(false)
+    end
+  end)
+
+  side_popups.left:map("n", config.keymaps.toggle_maximise, function()
+    if side_popups.left:maximised() then
+      layout:update(layout_configs.default)
+      main_popup:set_maximised(false)
+      side_popups.left:set_maximised(false)
+      side_popups.right:set_maximised(false)
+    else
+      layout:update(layout_configs.maximised.side_popups.left)
+      main_popup:set_maximised(false)
+      side_popups.left:set_maximised(true)
+      side_popups.right:set_maximised(false)
+    end
+  end)
+
+  side_popups.right:map("n", config.keymaps.toggle_maximise, function()
+    if side_popups.right:maximised() then
+      layout:update(layout_configs.default)
+      main_popup:set_maximised(false)
+      side_popups.left:set_maximised(false)
+      side_popups.right:set_maximised(false)
+    else
+      layout:update(layout_configs.maximised.side_popups.right)
+      main_popup:set_maximised(false)
+      side_popups.left:set_maximised(false)
+      side_popups.right:set_maximised(true)
+    end
+  end)
 
   return layout, popups
 end
@@ -194,23 +285,37 @@ M.triple_pane_2_column = function(opts)
     ),
   }
 
-  local layout = NuiLayout(
-    {
-      position = "50%",
-      relative = "editor",
-      size = {
-        width = "90%",
-        height = "90%",
-      },
-    },
-    NuiLayout.Box({
+  local layout_configs = {
+    default = NuiLayout.Box({
       NuiLayout.Box(main_popup, { size = "50%" }),
       NuiLayout.Box({
         NuiLayout.Box(side_popups.top, { size = "20%" }),
         NuiLayout.Box(side_popups.bottom, { grow = 1 }),
       }, { size = "50%", dir = "col" }),
-    }, { dir = "row" })
-  )
+    }, { dir = "row" }),
+    maximised = {
+      main_popup = NuiLayout.Box({
+        NuiLayout.Box(main_popup, { size = "100%" }),
+      }, {}),
+      side_popups = {
+        top = NuiLayout.Box({
+          NuiLayout.Box(side_popups.top, { size = "100%" }),
+        }, {}),
+        bottom = NuiLayout.Box({
+          NuiLayout.Box(side_popups.bottom, { size = "100%" }),
+        }, {}),
+      },
+    },
+  }
+
+  local layout = NuiLayout({
+    position = "50%",
+    relative = "editor",
+    size = {
+      width = "90%",
+      height = "90%",
+    },
+  }, layout_configs.default)
 
   main_popup:map(
     config.keymaps.move_to_pane.right,
@@ -241,6 +346,48 @@ M.triple_pane_2_column = function(opts)
     config.keymaps.move_to_pane.left,
     function() vim.api.nvim_set_current_win(main_popup.winid) end
   )
+
+  main_popup:map(config.keymaps.toggle_maximise, "Toggle maximise", function()
+    if main_popup:maximised() then
+      layout:update(layout_configs.default)
+      main_popup:set_maximised(false)
+      side_popups.top:set_maximised(false)
+      side_popups.bottom:set_maximised(false)
+    else
+      layout:update(layout_configs.maximised.main_popup)
+      main_popup:set_maximised(true)
+      side_popups.top:set_maximised(false)
+      side_popups.bottom:set_maximised(false)
+    end
+  end)
+
+  side_popups.top:map("n", config.keymaps.toggle_maximise, function()
+    if side_popups.top:maximised() then
+      layout:update(layout_configs.default)
+      main_popup:set_maximised(false)
+      side_popups.top:set_maximised(false)
+      side_popups.bottom:set_maximised(false)
+    else
+      layout:update(layout_configs.maximised.side_popups.top)
+      main_popup:set_maximised(false)
+      side_popups.top:set_maximised(true)
+      side_popups.bottom:set_maximised(false)
+    end
+  end)
+
+  side_popups.bottom:map("n", config.keymaps.toggle_maximise, function()
+    if side_popups.bottom:maximised() then
+      layout:update(layout_configs.default)
+      main_popup:set_maximised(false)
+      side_popups.top:set_maximised(false)
+      side_popups.bottom:set_maximised(false)
+    else
+      layout:update(layout_configs.maximised.side_popups.bottom)
+      main_popup:set_maximised(false)
+      side_popups.top:set_maximised(false)
+      side_popups.bottom:set_maximised(true)
+    end
+  end)
 
   return layout, {
     main = main_popup,
