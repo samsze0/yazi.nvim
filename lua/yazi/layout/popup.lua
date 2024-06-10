@@ -1,8 +1,10 @@
 local NuiPopup = require("nui.popup")
 local NuiEvent = require("nui.utils.autocmd").event
 local opts_utils = require("utils.opts")
+local tbl_utils = require("utils.table")
 local terminal_utils = require("utils.terminal")
 
+---@type nui_popup_options
 local base_popup_config = {
   focusable = true,
   border = {
@@ -18,6 +20,23 @@ local base_popup_config = {
     wrap = false,
   },
 }
+
+---@type nui_popup_options
+local base_help_popup_config = {
+  win_options = {
+    wrap = true,
+  },
+  relative = "editor",
+  position = "50%",
+  size = {
+    width = "75%",
+    height = "75%",
+  },
+  zindex = 50,
+}
+base_help_popup_config =
+  opts_utils.deep_extend(base_popup_config, base_help_popup_config)
+---@cast base_help_popup_config nui_popup_options
 
 ---@class YaziMainPopup: NuiPopup
 ---@field _yazi_keymaps table<string, string> Mappings of key to name (of the handler)
@@ -186,7 +205,50 @@ function SidePopup:show_buf_content(buf, opts)
   self:show_file_content(path, { cursor_pos = opts.cursor_pos })
 end
 
+---@class YaziHelpPopup: NuiPopup
+---@field _visible boolean
+local HelpPopup = {}
+HelpPopup.__index = HelpPopup
+HelpPopup.__is_class = true
+setmetatable(HelpPopup, { __index = NuiPopup })
+
+---@param config? nui_popup_options
+---@return YaziHelpPopup
+function HelpPopup.new(config)
+  config = opts_utils.deep_extend(base_help_popup_config, {}, config)
+
+  local obj = NuiPopup(config)
+  setmetatable(obj, HelpPopup)
+  ---@cast obj YaziHelpPopup
+
+  return obj
+end
+
+function HelpPopup:focus() vim.api.nvim_set_current_win(self.winid) end
+
+---@return boolean
+function HelpPopup:is_visible() return self._visible end
+
+---@param visible boolean
+function HelpPopup:set_visible(visible) self._visible = visible end
+
+---@param lines string[]
+function HelpPopup:set_lines(lines)
+  vim.api.nvim_buf_set_lines(self.bufnr, 0, -1, false, lines)
+end
+
+---@param keymaps table<string, string>
+function HelpPopup:set_keymaps(keymaps)
+  local items = tbl_utils.map(
+    keymaps,
+    function(key, name) return name .. " : " .. key end
+  )
+  items = tbl_utils.sort(items, function(a, b) return a < b end)
+  self:set_lines(items)
+end
+
 return {
   MainPopup = MainPopup,
   SidePopup = SidePopup,
+  HelpPopup = HelpPopup,
 }

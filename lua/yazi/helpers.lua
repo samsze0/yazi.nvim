@@ -111,6 +111,12 @@ M.configure_filepreview = function(main_popup, preview_popup, controller, opts)
   end
 end
 
+---@param main_popup YaziMainPopup
+---@param help_popup YaziHelpPopup
+M.configure_help_popup = function(main_popup, help_popup)
+  help_popup:set_keymaps(main_popup:keymaps())
+end
+
 ---@param layout NuiLayout
 ---@param main_popup YaziMainPopup
 ---@param controller YaziController
@@ -125,7 +131,7 @@ end
 
 -- Layout & popup configurations for previewing code
 --
----@alias YaziLayoutDualPaneCodePreviewOptions { filepath_accessor: (fun(focus: any): string), main_popup?: YaziLayoutMainPopupOptions, side_popup?: YaziLayoutSidePopupOptions }
+---@alias YaziLayoutDualPaneCodePreviewOptions { filepath_accessor: (fun(focus: any): string), main_popup?: YaziMainPopup, side_popup?: YaziSidePopup, help_popup?: YaziHelpPopup }
 ---@param controller YaziController
 ---@param opts YaziLayoutDualPaneCodePreviewOptions
 ---@return NuiLayout, { main: YaziMainPopup, side: YaziSidePopup }
@@ -145,10 +151,12 @@ M.dual_pane_code_preview = function(controller, opts)
   local layout, popups = layouts.dual_pane({
     main_popup = opts.main_popup,
     side_popup = opts.side_popup,
+    help_popup = opts.help_popup,
   })
 
   M.configure_controller_ui_hooks(layout, popups.main, controller)
   M.configure_remote_nav(popups.main, popups.side)
+  M.configure_help_popup(popups.main, popups.help)
 
   M.configure_filepreview(popups.main, popups.side, controller, {
     setup_file_open_keymaps = true,
@@ -160,7 +168,7 @@ end
 
 -- Layout & popup configurations for code diff
 --
----@alias YaziLayoutTriplePaneCodeDiffOptions { filepath_accessor: (fun(focus: any): string), main_popup?: YaziLayoutMainPopupOptions, left_preview_popup?: YaziLayoutSidePopupOptions, right_preview_popup?: YaziLayoutSidePopupOptions }
+---@alias YaziLayoutTriplePaneCodeDiffOptions { filepath_accessor: (fun(focus: any): string), main_popup?: YaziMainPopup, left_preview_popup?: YaziSidePopup, right_preview_popup?: YaziSidePopup }
 ---@param controller YaziController
 ---@param opts? YaziLayoutTriplePaneCodeDiffOptions
 ---@return NuiLayout, { main: YaziMainPopup, side: { left: YaziSidePopup, right: YaziSidePopup } }
@@ -191,6 +199,7 @@ M.triple_pane_code_diff = function(controller, opts)
 
   M.configure_controller_ui_hooks(layout, popups.main, controller)
   M.configure_remote_nav(popups.main, popups.side.left)
+  M.configure_help_popup(popups.main, popups.help)
 
   return layout, popups
 end

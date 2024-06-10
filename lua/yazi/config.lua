@@ -1,7 +1,7 @@
 local opts_utils = require("utils.opts")
 
 ---@alias YaziNotifier { info?: fun(message: string), warn?: fun(message: string), error?: fun(message: string) }
----@alias YaziKeymapsOptions { move_to_pane?: { left?: string, down?: string, up?: string, right?: string }, remote_scroll_preview_pane?: { up?: string, down?: string, left?: string, right?: string }, toggle_maximise?: string }
+---@alias YaziKeymapsOptions { move_to_pane?: { left?: string, down?: string, up?: string, right?: string }, remote_scroll_preview_pane?: { up?: string, down?: string, left?: string, right?: string }, toggle_maximise?: string, show_help?: string, hide_help?: string }
 ---@alias YaziSetupOptions { keymaps?: YaziKeymapsOptions, default_extra_args?: ShellOpts, default_extra_env_vars?: ShellOpts }
 
 local config = {
@@ -24,6 +24,8 @@ local config = {
       right = "<S-Right>",
     },
     toggle_maximise = "<C-z>",
+    show_help = "<C-?>",
+    hide_help = "q",
   },
   default_extra_args = {},
   default_extra_env_vars = {},
