@@ -37,6 +37,7 @@ end
 ---@return fun(): nil unsubscribe_handle
 function YaziIpcClient:subscribe(event, callback)
   -- TODO
+  return function() end
 end
 
 -- Destroy the yazi client by freeing up any occupied resources

@@ -11,5 +11,12 @@
       ".test/external-dep/nui.nvim/lua"
     ],
     "checkThirdParty": false
+  },
+  "diagnostics": {
+    "groupseverity": {
+      "await": "warning",
+      "strong": "warning"
+    }
   }
 }
+

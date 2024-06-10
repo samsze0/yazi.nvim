@@ -1,18 +1,17 @@
 local uuid_utils = require("utils.uuid")
 local opts_utils = require("utils.opts")
-local yazi_setup = require("yazi.config").setup
-local config = require("yazi.config").config
+local config = require("yazi.config")
 local tbl_utils = require("utils.table")
 local IpcClient = require("yazi.ipc-client")
 local CallbackMap = require("yazi.callback-map")
 local terminal_utils = require("utils.terminal")
-
 local M = {}
 
 ---@alias YaziControllerId string
 ---@alias YaziUIHooks { show: function, hide: function, focus: function, destroy: function }
 
-M.setup = yazi_setup
+---@param opts? YaziSetupOptions
+function M.setup(opts) M.config = opts_utils.deep_extend(config, opts) end
 
 -- Generic classes still WIP
 -- https://github.com/LuaLS/lua-language-server/issues/1861
@@ -75,6 +74,7 @@ function Controller.new(opts)
     _started = false,
     _exited = false,
   }
+  setmetatable(controller, Controller)
   ControllerMap[controller_id] = controller
 
   return controller

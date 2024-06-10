@@ -1,12 +1,10 @@
 local opts_utils = require("utils.opts")
 
-local M = {}
-
 ---@alias YaziNotifier { info?: fun(message: string), warn?: fun(message: string), error?: fun(message: string) }
 ---@alias YaziKeymapsOptions { move_to_pane?: { left?: string, down?: string, up?: string, right?: string }, remote_scroll_preview_pane?: { up?: string, down?: string, left?: string, right?: string } }
 ---@alias YaziSetupOptions { keymaps?: YaziKeymapsOptions, default_extra_args?: ShellOpts, default_extra_env_vars?: ShellOpts }
 
-M.config = {
+local config = {
   notifier = {
     info = function(message) vim.notify(message, vim.log.levels.INFO) end,
     warn = function(message) vim.notify(message, vim.log.levels.WARN) end,
@@ -30,7 +28,4 @@ M.config = {
   default_extra_env_vars = {},
 }
 
----@param opts? YaziSetupOptions
-function M.setup(opts) M.config = opts_utils.deep_extend(M.config, opts) end
-
-return M
+return config

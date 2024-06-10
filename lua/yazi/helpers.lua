@@ -1,7 +1,7 @@
 local opts_utils = require("utils.opts")
 local tbl_utils = require("utils.table")
 local terminal_utils = require("utils.terminal")
-local config = require("yazi.config").config
+local config = require("yazi.config")
 local jumplist = require("jumplist")
 local NuiEvent = require("nui.utils.autocmd").event
 local layouts = require("yazi.layout")
@@ -86,7 +86,7 @@ M.configure_filepreview = function(main_popup, preview_popup, controller, opts)
     filepath_accessor = function(focus) return focus.filepath end,
   }, opts)
 
-  controller:subscribe("focus", nil, function(payload)
+  controller:subscribe("focus", function(payload)
     local focus = controller.focus
 
     preview_popup:set_lines({})
