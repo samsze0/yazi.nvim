@@ -24,6 +24,7 @@ local config = {
       right = "<S-Right>",
     },
     toggle_maximise = "<C-z>",
+    copy_filepath_to_clipboard = "<C-y>",
     show_help = "<C-?>",
     hide_help = "q",
   },

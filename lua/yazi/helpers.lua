@@ -96,9 +96,7 @@ M.configure_filepreview = function(main_popup, preview_popup, controller, opts)
     preview_popup:show_file_content(opts.filepath_accessor(focus))
   end)
 
-  -- TODO: source keybinds from config
-
-  main_popup:map("<C-y>", "Copy filepath", function()
+  main_popup:map(config.keymaps.copy_filepath_to_clipboard, "Copy filepath", function()
     if not controller.focus then return end
 
     local filepath = opts.filepath_accessor(controller.focus)
@@ -134,7 +132,7 @@ end
 ---@alias YaziLayoutDualPaneCodePreviewOptions { filepath_accessor: (fun(focus: any): string), main_popup?: YaziMainPopup, side_popup?: YaziSidePopup, help_popup?: YaziHelpPopup }
 ---@param controller YaziController
 ---@param opts YaziLayoutDualPaneCodePreviewOptions
----@return NuiLayout, { main: YaziMainPopup, side: YaziSidePopup }
+---@return NuiLayout, { main: YaziMainPopup, side: YaziSidePopup, help: YaziHelpPopup }
 M.dual_pane_code_preview = function(controller, opts)
   opts = opts_utils.deep_extend({
     side_popup = {
@@ -171,7 +169,7 @@ end
 ---@alias YaziLayoutTriplePaneCodeDiffOptions { filepath_accessor: (fun(focus: any): string), main_popup?: YaziMainPopup, left_preview_popup?: YaziSidePopup, right_preview_popup?: YaziSidePopup }
 ---@param controller YaziController
 ---@param opts? YaziLayoutTriplePaneCodeDiffOptions
----@return NuiLayout, { main: YaziMainPopup, side: { left: YaziSidePopup, right: YaziSidePopup } }
+---@return NuiLayout, { main: YaziMainPopup, side: { left: YaziSidePopup, right: YaziSidePopup }, help: YaziHelpPopup }
 M.triple_pane_code_diff = function(controller, opts)
   opts = opts_utils.deep_extend({
     left_preview_popup = {
