@@ -48,14 +48,14 @@ end
 
 function Layout:setup_keymaps()
   self.main_popup:map(config.keymaps.show_help, "Show help", function()
-    self.help_popup:mount()
+    self.help_popup:show()
     self.help_popup:focus()
   end)
 
   self.help_popup:map(
     "n",
     config.keymaps.hide_help,
-    function() self.help_popup:unmount() end
+    function() self.help_popup:hide() end
   )
 end
 
