@@ -219,6 +219,9 @@ function HelpPopup.new(opts)
   setmetatable(obj, HelpPopup)
   ---@cast obj YaziHelpPopup
 
+  -- FIX: border text not showing
+  obj.border:set_text("top", " Help ", "left")
+
   return obj
 end
 
