@@ -29,8 +29,8 @@ local base_help_popup_config = {
   relative = "editor",
   position = "50%",
   size = {
-    width = 0.75,
-    height = 0.75,
+    width = "75%",
+    height = "75%",
   },
   zindex = 50,
 }

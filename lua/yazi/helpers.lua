@@ -5,6 +5,7 @@ local config = require("yazi.config")
 local jumplist = require("jumplist")
 local NuiEvent = require("nui.utils.autocmd").event
 local layouts = require("yazi.layout")
+local SidePopup = require("yazi.layout.popup").SidePopup
 
 local _info = config.notifier.info
 local _warn = config.notifier.warn
@@ -135,14 +136,12 @@ end
 ---@return NuiLayout, { main: YaziMainPopup, side: YaziSidePopup, help: YaziHelpPopup }
 M.dual_pane_code_preview = function(controller, opts)
   opts = opts_utils.deep_extend({
-    side_popup = {
-      extra_options = {
-        win_options = {
-          number = true,
-          cursorline = true,
-        },
+    side_popup = SidePopup.new({
+      win_options = {
+        number = true,
+        cursorline = true,
       },
-    },
+    })
   }, opts)
   ---@cast opts YaziLayoutDualPaneCodePreviewOptions
 
@@ -172,20 +171,16 @@ end
 ---@return NuiLayout, { main: YaziMainPopup, side: { left: YaziSidePopup, right: YaziSidePopup }, help: YaziHelpPopup }
 M.triple_pane_code_diff = function(controller, opts)
   opts = opts_utils.deep_extend({
-    left_preview_popup = {
-      extra_options = {
-        win_options = {
-          number = true,
-        },
+    left_preview_popup = SidePopup.new({
+      win_options = {
+        number = true,
       },
-    },
-    right_preview_popup = {
-      extra_options = {
-        win_options = {
-          number = true,
-        },
+    }),
+    right_preview_popup = SidePopup.new({
+      win_options = {
+        number = true,
       },
-    },
+    }),
   }, opts)
   ---@cast opts YaziLayoutTriplePaneCodeDiffOptions
 

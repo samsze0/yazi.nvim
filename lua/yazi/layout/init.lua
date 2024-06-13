@@ -96,10 +96,8 @@ M.dual_pane = function(opts)
     maximised = {
       main = NuiLayout.Box({
         NuiLayout.Box(main_popup, { size = "100%" }),
-        NuiLayout.Box(side_popup, { size = "0%" }),
       }, {}),
       side = NuiLayout.Box({
-        NuiLayout.Box(main_popup, { size = "0%" }),
         NuiLayout.Box(side_popup, { size = "100%" }),
       }, {}),
     },
