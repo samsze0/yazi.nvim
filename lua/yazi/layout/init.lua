@@ -2,488 +2,501 @@ local NuiLayout = require("nui.layout")
 local MainPopup = require("yazi.layout.popup").MainPopup
 local SidePopup = require("yazi.layout.popup").SidePopup
 local HelpPopup = require("yazi.layout.popup").HelpPopup
-local config = require("yazi.config")
+local config = require("yazi.config").config
 local opts_utils = require("utils.opts")
 
 local _info = config.notifier.info
 local _warn = config.notifier.warn
 local _error = config.notifier.error
 
-local M = {}
+---@type nui_layout_options
+local layout_opts = {
+  position = "50%",
+  relative = "editor",
+  size = {
+    width = "95%",
+    height = "95%",
+  },
+}
 
--- TODO: generics on Popup class
+---@class YaziLayout: NuiLayout
+---@field maximised_popup? YaziPopup
+---@field layout_config { default: NuiLayout.Box }
+---@field main_popup YaziMainPopup
+---@field help_popup YaziHelpPopup
+local Layout = {}
+Layout.__index = Layout
+Layout.__is_class = true
+setmetatable(Layout, { __index = NuiLayout })
 
----@alias YaziLayoutSinglePaneOptions { main_popup?: YaziMainPopup, help_popup?: YaziHelpPopup }
----@param opts? YaziLayoutSinglePaneOptions
----@return NuiLayout layout, { main: YaziMainPopup, help: YaziHelpPopup } popups
-M.single_pane = function(opts)
+---@param box NuiLayout.Box
+---@param opts? { layout_opts?: nui_layout_options }
+---@return YaziLayout
+function Layout.new(box, opts)
   opts = opts_utils.deep_extend({
-    main_popup = MainPopup.new(),
-    help_popup = HelpPopup.new(),
+    layout_opts = layout_opts,
   }, opts)
-  ---@cast opts YaziLayoutSinglePaneOptions
 
-  local main_popup = opts.main_popup
-  local help_popup = opts.help_popup
+  local obj = NuiLayout(opts.layout_opts, box)
+  setmetatable(obj, Layout)
+  ---@cast obj YaziLayout
 
-  if not main_popup or not help_popup then error("Some popups are missing") end
+  obj.maximised_popup = nil
 
-  local layout_configs = {
-    default = NuiLayout.Box({
-      NuiLayout.Box(main_popup, { size = "100%" }),
-    }, {}),
-  }
-
-  local layout = NuiLayout({
-    position = "50%",
-    relative = "editor",
-    size = {
-      width = "95%",
-      height = "95%",
-    },
-  }, layout_configs.default)
-
-  main_popup:map(config.keymaps.show_help, "Show help", function()
-    if not help_popup:is_visible() then
-      help_popup:set_visible(true)
-      help_popup:mount()
-      help_popup:focus()
-    end
-  end)
-
-  help_popup:map("n", config.keymaps.hide_help, function()
-    if help_popup:is_visible() then
-      help_popup:set_visible(false)
-      help_popup:unmount()
-      layout:update(layout_configs.default)
-      main_popup:focus()
-    end
-  end)
-
-  return layout, {
-    main = main_popup,
-    help = help_popup,
-  }
+  return obj
 end
 
----@alias YaziLayoutDualPaneOptions { main_popup?: YaziMainPopup, side_popup?: YaziSidePopup, help_popup?: YaziHelpPopup }
----@param opts? YaziLayoutDualPaneOptions
----@return NuiLayout, { main: YaziMainPopup, side: YaziSidePopup, help: YaziHelpPopup }
-M.dual_pane = function(opts)
-  opts = opts_utils.deep_extend({
-    main_popup = MainPopup.new(),
-    side_popup = SidePopup.new(),
-    help_popup = HelpPopup.new(),
-  }, opts)
-  ---@cast opts YaziLayoutDualPaneOptions
+function Layout:setup_keymaps()
+  self.main_popup:map(config.keymaps.show_help, "Show help", function()
+    self.help_popup:mount()
+    self.help_popup:focus()
+  end)
 
-  local main_popup = opts.main_popup
-  local side_popup = opts.side_popup
-  local help_popup = opts.help_popup
+  self.help_popup:map(
+    "n",
+    config.keymaps.hide_help,
+    function() self.help_popup:unmount() end
+  )
+end
 
-  if not main_popup or not side_popup or not help_popup then
-    error("Some popups are missing")
+-- TODO: move isinstance function to oop utils
+local function is_instance(o, class)
+  while o do
+    o = getmetatable(o)
+    if class == o then return true end
   end
+  return false
+end
 
-  local popups =
-    { main = opts.main_popup, side = opts.side_popup, help = opts.help_popup }
+---@param popup YaziPopup
+---@param box NuiLayout.Box
+function Layout:_setup_popup_maximised_keymaps(popup, box)
+  local fn = function()
+    if self.maximised_popup == popup then
+      self:update(self.layout_config.default)
+      self.maximised_popup = nil
+    else
+      self:update(box)
+      self.maximised_popup = popup
+    end
+  end  
 
-  local layout_configs = {
-    default = NuiLayout.Box({
-      NuiLayout.Box(main_popup, { size = "50%" }),
-      NuiLayout.Box(side_popup, { size = "50%" }),
-    }, { dir = "row" }),
+  if is_instance(popup, MainPopup) then
+    ---@cast popup YaziMainPopup
+    popup:map(config.keymaps.toggle_maximise, "Toggle maximise", fn)
+  else
+    popup:map("n", config.keymaps.toggle_maximise, fn)
+  end
+end
+
+---@class YaziSinglePaneLayout: YaziLayout
+---@field main_popup YaziMainPopup
+---@field help_popup YaziHelpPopup
+local SinglePaneLayout = {}
+SinglePaneLayout.__index = SinglePaneLayout
+SinglePaneLayout.__is_class = true
+setmetatable(SinglePaneLayout, { __index = Layout })
+
+---@param opts? { main_popup?: YaziMainPopup, help_popup?: YaziSidePopup, extra_layout_opts?: nui_layout_options, layout_config?: { default?: fun(main_popup: YaziMainPopup, help_popup: YaziHelpPopup): NuiLayout.Box } }
+---@return YaziLayout
+function SinglePaneLayout.new(opts)
+  opts = opts_utils.deep_extend({
+    layout_config = {
+      default = function(main_popup, help_popup)
+        return NuiLayout.Box({
+          NuiLayout.Box(main_popup, { size = "100%" }),
+        }, {})
+      end,
+    }
+  }, opts)
+
+  if not opts.main_popup then opts.main_popup = MainPopup.new() end
+  if not opts.help_popup then opts.help_popup = HelpPopup.new() end
+
+  local layout_config = {
+    default = opts.layout_config.default(opts.main_popup, opts.help_popup),
+  }
+
+  local obj = Layout.new(layout_config.default, opts)
+  setmetatable(obj, SinglePaneLayout)
+  ---@cast obj YaziSinglePaneLayout
+
+  obj.layout_config = layout_config
+  obj.main_popup = opts.main_popup
+  obj.help_popup = opts.help_popup
+
+  return obj
+end
+
+function SinglePaneLayout:setup_keymaps()
+  Layout.setup_keymaps(self)
+end
+
+---@class YaziDualPaneLayout: YaziLayout
+---@field layout_config { default?: NuiLayout.Box, maximised?: { main: NuiLayout.Box, side: NuiLayout.Box } }
+---@field side_popup YaziSidePopup
+local DualPaneLayout = {}
+DualPaneLayout.__index = DualPaneLayout
+DualPaneLayout.__is_class = true
+setmetatable(DualPaneLayout, { __index = Layout })
+
+---@param opts? { main_popup?: YaziMainPopup, side_popup?: YaziSidePopup, help_popup?: YaziHelpPopup, extra_layout_opts?: nui_layout_options, layout_config?: { default?: (fun(main_popup: YaziMainPopup, side_popup: YaziSidePopup, help_popup: YaziHelpPopup): NuiLayout.Box), maximised?: { main?: (fun(main_popup: YaziMainPopup, side_popup: YaziSidePopup, help_popup: YaziHelpPopup): NuiLayout.Box), side?: (fun(main_popup: YaziMainPopup, side_popup: YaziSidePopup, help_popup: YaziHelpPopup): NuiLayout.Box) } } }
+---@return YaziDualPaneLayout
+function DualPaneLayout.new(opts)
+  opts = opts_utils.deep_extend({
+    layout_config = {
+      default = function(main_popup, side_popup, help_popup)
+        return NuiLayout.Box({
+          NuiLayout.Box(main_popup, { size = "50%" }),
+          NuiLayout.Box(side_popup, { size = "50%" }),
+        }, { dir = "row" })
+      end,
+      maximised = {
+        main = function(main_popup, side_popup, help_popup)
+          return NuiLayout.Box({
+            NuiLayout.Box(main_popup, { size = "100%" }),
+          }, {})
+        end,
+        side = function(main_popup, side_popup, help_popup)
+          return NuiLayout.Box({
+            NuiLayout.Box(side_popup, { size = "100%" }),
+          }, {})
+        end,
+      },
+    }
+  }, opts)
+
+  if not opts.main_popup then opts.main_popup = MainPopup.new() end
+  if not opts.side_popup then opts.side_popup = SidePopup.new() end
+  if not opts.help_popup then opts.help_popup = HelpPopup.new() end
+
+  local layout_config = {
+    default = opts.layout_config.default(
+      opts.main_popup,
+      opts.side_popup,
+      opts.help_popup
+    ),
     maximised = {
-      main = NuiLayout.Box({
-        NuiLayout.Box(main_popup, { size = "100%" }),
-      }, {}),
-      side = NuiLayout.Box({
-        NuiLayout.Box(side_popup, { size = "100%" }),
-      }, {}),
+      main = opts.layout_config.maximised.main(
+        opts.main_popup,
+        opts.side_popup,
+        opts.help_popup
+      ),
+      side = opts.layout_config.maximised.side(
+        opts.main_popup,
+        opts.side_popup,
+        opts.help_popup
+      ),
     },
   }
 
-  local layout = NuiLayout({
-    position = "50%",
-    relative = "editor",
-    size = {
-      width = "95%",
-      height = "95%",
-    },
-  }, layout_configs.default)
+  local obj = Layout.new(layout_config.default, opts)
+  setmetatable(obj, DualPaneLayout)
+  ---@cast obj YaziDualPaneLayout
 
-  main_popup:map(
+  obj.layout_config = layout_config
+  obj.main_popup = opts.main_popup
+  obj.side_popup = opts.side_popup
+  obj.help_popup = opts.help_popup
+
+  return obj
+end
+
+function DualPaneLayout:setup_keymaps()
+  Layout.setup_keymaps(self)
+
+  self.main_popup:map(
     config.keymaps.move_to_pane.right,
     "Move to side pane",
-    function() vim.api.nvim_set_current_win(side_popup.winid) end
+    function() self.side_popup:focus() end
   )
 
-  side_popup:map(
+  self.side_popup:map(
     "n",
     config.keymaps.move_to_pane.left,
-    function() vim.api.nvim_set_current_win(main_popup.winid) end
+    function() self.main_popup:focus() end
   )
 
-  main_popup:map(config.keymaps.toggle_maximise, "Toggle maximise", function()
-    if main_popup:maximised() then
-      layout:update(layout_configs.default)
-      main_popup:set_maximised(false)
-      side_popup:set_maximised(false)
-    else
-      layout:update(layout_configs.maximised.main)
-      main_popup:set_maximised(true)
-      side_popup:set_maximised(false)
-    end
-  end)
-
-  side_popup:map("n", config.keymaps.toggle_maximise, function()
-    if side_popup:maximised() then
-      layout:update(layout_configs.default)
-      main_popup:set_maximised(false)
-      side_popup:set_maximised(false)
-    else
-      layout:update(layout_configs.maximised.side)
-      main_popup:set_maximised(false)
-      side_popup:set_maximised(true)
-    end
-  end)
-
-  main_popup:map(config.keymaps.show_help, "Show help", function()
-    if not help_popup:is_visible() then
-      help_popup:set_visible(true)
-      help_popup:mount()
-      help_popup:focus()
-    end
-  end)
-
-  help_popup:map("n", config.keymaps.hide_help, function()
-    if help_popup:is_visible() then
-      help_popup:set_visible(false)
-      help_popup:unmount()
-      -- Check if main popup is maximised
-      if main_popup:maximised() then
-        layout:update(layout_configs.maximised.main)
-      else
-        layout:update(layout_configs.default)
-      end
-      main_popup:focus()
-    end
-  end)
-
-  return layout, popups
+  self:_setup_popup_maximised_keymaps(
+    self.main_popup,
+    self.layout_config.maximised.main
+  )
+  self:_setup_popup_maximised_keymaps(
+    self.side_popup,
+    self.layout_config.maximised.side
+  )
 end
 
----@alias YaziLayoutTriplePaneOptions { main_popup?: YaziMainPopup, left_side_popup?: YaziSidePopup, right_side_popup?: YaziSidePopup, help_popup?: YaziHelpPopup }
----@param opts? YaziLayoutTriplePaneOptions
----@return NuiLayout layout, { main: YaziMainPopup, side: { left: YaziSidePopup, right: YaziSidePopup }, help: YaziHelpPopup } popups
-M.triple_pane = function(opts)
+---@class YaziTriplePaneLayout: YaziLayout
+---@field layout_config { default?: NuiLayout.Box, maximised?: { main: NuiLayout.Box, side: { left: NuiLayout.Box, right: NuiLayout.Box } } }
+---@field side_popups { left: YaziSidePopup, right: YaziSidePopup }
+local TriplePaneLayout = {}
+TriplePaneLayout.__index = TriplePaneLayout
+TriplePaneLayout.__is_class = true
+setmetatable(TriplePaneLayout, { __index = Layout })
+
+---@param opts? { main_popup?: YaziMainPopup, side_popups?: { left: YaziSidePopup, right: YaziSidePopup }, help_popup?: YaziHelpPopup, extra_layout_opts?: nui_layout_options, layout_config?: { default?: (fun(main_popup: YaziMainPopup, side_popups: { left: YaziSidePopup, right: YaziSidePopup }, help_popup: YaziHelpPopup): NuiLayout.Box), maximised?: { main?: (fun(main_popup: YaziMainPopup, side_popups: { left: YaziSidePopup, right: YaziSidePopup }, help_popup: YaziHelpPopup): NuiLayout.Box), side?: { left?: (fun(main_popup: YaziMainPopup, side_popups: { left: YaziSidePopup, right: YaziSidePopup }, help_popup: YaziHelpPopup): NuiLayout.Box), right?: (fun(main_popup: YaziMainPopup, side_popups: { left: YaziSidePopup, right: YaziSidePopup }, help_popup: YaziHelpPopup): NuiLayout.Box) } } } }
+---@return YaziTriplePaneLayout
+function TriplePaneLayout.new(opts)
   opts = opts_utils.deep_extend({
-    main_popup = MainPopup.new(),
-    left_side_popup = SidePopup.new(),
-    right_side_popup = SidePopup.new(),
-    help_popup = HelpPopup.new(),
+    layout_config = {
+      default = function(main_popup, side_popups, help_popup)
+        return NuiLayout.Box({
+          NuiLayout.Box(main_popup, { size = "30%" }),
+          NuiLayout.Box(side_popups.left, { size = "35%" }),
+          NuiLayout.Box(side_popups.right, { size = "35%" }),
+        }, { dir = "row" })
+      end,
+      maximised = {
+        main = function(main_popup, side_popups, help_popup)
+          return NuiLayout.Box({
+            NuiLayout.Box(main_popup, { size = "100%" }),
+          }, {})
+        end,
+        side = {
+          left = function(main_popup, side_popups, help_popup)
+            return NuiLayout.Box({
+              NuiLayout.Box(side_popups.left, { size = "100%" }),
+            }, {})
+          end,
+          right = function(main_popup, side_popups, help_popup)
+            return NuiLayout.Box({
+              NuiLayout.Box(side_popups.right, { size = "100%" }),
+            }, {})
+          end,
+        },
+      },
+    }
   }, opts)
-  ---@cast opts YaziLayoutTriplePaneOptions
 
-  local main_popup = opts.main_popup
-  local side_popups = {
-    left = opts.left_side_popup,
-    right = opts.right_side_popup,
-  }
-  local help_popup = opts.help_popup
-
-  if
-    not main_popup
-    or not side_popups.left
-    or not side_popups.right
-    or not help_popup
-  then
-    error("Some popups are missing")
+  if not opts.main_popup then opts.main_popup = MainPopup.new() end
+  -- TODO
+  if not opts.side_popups then
+    opts.side_popups = {
+      left = SidePopup.new(),
+      right = SidePopup.new(),
+    }
   end
+  if not opts.help_popup then opts.help_popup = HelpPopup.new() end
 
-  local popups = { main = main_popup, side = side_popups, help = help_popup }
-
-  local layout_configs = {
-    default = NuiLayout.Box({
-      NuiLayout.Box(main_popup, { size = "30%" }),
-      NuiLayout.Box(side_popups.left, { size = "35%" }),
-      NuiLayout.Box(side_popups.right, { size = "35%" }),
-    }, { dir = "row" }),
+  local layout_config = {
+    default = opts.layout_config.default(
+      opts.main_popup,
+      opts.side_popups,
+      opts.help_popup
+    ),
     maximised = {
-      main = NuiLayout.Box({
-        NuiLayout.Box(main_popup, { size = "100%" }),
-      }, {}),
+      main = opts.layout_config.maximised.main(
+        opts.main_popup,
+        opts.side_popups,
+        opts.help_popup
+      ),
       side = {
-        left = NuiLayout.Box({
-          NuiLayout.Box(side_popups.left, { size = "100%" }),
-        }, {}),
-        right = NuiLayout.Box({
-          NuiLayout.Box(side_popups.right, { size = "100%" }),
-        }, {}),
+        left = opts.layout_config.maximised.side.left(
+          opts.main_popup,
+          opts.side_popups,
+          opts.help_popup
+        ),
+        right = opts.layout_config.maximised.side.right(
+          opts.main_popup,
+          opts.side_popups,
+          opts.help_popup
+        ),
       },
     },
   }
 
-  local layout = NuiLayout({
-    position = "50%",
-    relative = "editor",
-    size = {
-      width = "95%",
-      height = "95%",
-    },
-  }, layout_configs.default)
+  local obj = Layout.new(layout_config.default, opts)
+  setmetatable(obj, TriplePaneLayout)
+  ---@cast obj YaziTriplePaneLayout
 
-  main_popup:map(
-    config.keymaps.move_to_pane.right,
-    "Move to side pane",
-    function() vim.api.nvim_set_current_win(side_popups.left.winid) end
-  )
+  obj.layout_config = layout_config
+  obj.main_popup = opts.main_popup
+  obj.side_popups = opts.side_popups
+  obj.help_popup = opts.help_popup
 
-  side_popups.left:map(
-    "n",
-    config.keymaps.move_to_pane.left,
-    function() vim.api.nvim_set_current_win(main_popup.winid) end
-  )
-
-  side_popups.left:map(
-    "n",
-    config.keymaps.move_to_pane.right,
-    function() vim.api.nvim_set_current_win(side_popups.right.winid) end
-  )
-
-  side_popups.right:map(
-    "n",
-    config.keymaps.move_to_pane.left,
-    function() vim.api.nvim_set_current_win(side_popups.left.winid) end
-  )
-
-  main_popup:map(config.keymaps.toggle_maximise, "Toggle maximise", function()
-    if main_popup:maximised() then
-      layout:update(layout_configs.default)
-      main_popup:set_maximised(false)
-      side_popups.left:set_maximised(false)
-      side_popups.right:set_maximised(false)
-    else
-      layout:update(layout_configs.maximised.main_popup)
-      main_popup:set_maximised(true)
-      side_popups.left:set_maximised(false)
-      side_popups.right:set_maximised(false)
-    end
-  end)
-
-  side_popups.left:map("n", config.keymaps.toggle_maximise, function()
-    if side_popups.left:maximised() then
-      layout:update(layout_configs.default)
-      main_popup:set_maximised(false)
-      side_popups.left:set_maximised(false)
-      side_popups.right:set_maximised(false)
-    else
-      layout:update(layout_configs.maximised.side.left)
-      main_popup:set_maximised(false)
-      side_popups.left:set_maximised(true)
-      side_popups.right:set_maximised(false)
-    end
-  end)
-
-  side_popups.right:map("n", config.keymaps.toggle_maximise, function()
-    if side_popups.right:maximised() then
-      layout:update(layout_configs.default)
-      main_popup:set_maximised(false)
-      side_popups.left:set_maximised(false)
-      side_popups.right:set_maximised(false)
-    else
-      layout:update(layout_configs.maximised.side.right)
-      main_popup:set_maximised(false)
-      side_popups.left:set_maximised(false)
-      side_popups.right:set_maximised(true)
-    end
-  end)
-
-  main_popup:map(config.keymaps.show_help, "Show help", function()
-    if not help_popup:is_visible() then
-      help_popup:set_visible(true)
-      help_popup:mount()
-      help_popup:focus()
-    end
-  end)
-
-  help_popup:map("n", config.keymaps.hide_help, function()
-    if help_popup:is_visible() then
-      help_popup:set_visible(false)
-      help_popup:unmount()
-      -- Check if main popup is maximised
-      if main_popup:maximised() then
-        layout:update(layout_configs.maximised.main)
-      else
-        layout:update(layout_configs.default)
-      end
-      main_popup:focus()
-    end
-  end)
-
-  return layout, popups
+  return obj
 end
 
----@alias YaziLayoutTriplePane2ColumnOptions { main_popup?: YaziMainPopup, top_side_popup?: YaziSidePopup, bottom_side_popup?: YaziSidePopup, help_popup?: YaziHelpPopup }
----@param opts? YaziLayoutTriplePane2ColumnOptions
----@return NuiLayout, { main: YaziMainPopup, side: { top: YaziSidePopup, bottom: YaziSidePopup }, help: YaziHelpPopup }
-M.triple_pane_2_column = function(opts)
+function TriplePaneLayout:setup_keymaps()
+  Layout.setup_keymaps(self)
+
+  self.main_popup:map(
+    config.keymaps.move_to_pane.right,
+    "Move to side pane",
+    function() self.side_popups.left:focus() end
+  )
+
+  self.side_popups.left:map(
+    "n",
+    config.keymaps.move_to_pane.left,
+    function() self.main_popup:focus() end
+  )
+
+  self.side_popups.left:map(
+    "n",
+    config.keymaps.move_to_pane.right,
+    function() self.side_popups.right:focus() end
+  )
+
+  self.side_popups.right:map(
+    "n",
+    config.keymaps.move_to_pane.left,
+    function() self.side_popups.left:focus() end
+  )
+
+  self:_setup_popup_maximised_keymaps(
+    self.main_popup,
+    self.layout_config.maximised.main
+  )
+  self:_setup_popup_maximised_keymaps(
+    self.side_popups.left,
+    self.layout_config.maximised.side.left
+  )
+  self:_setup_popup_maximised_keymaps(
+    self.side_popups.right,
+    self.layout_config.maximised.side.right
+  )
+end
+
+---@class YaziTriplePane2ColumnLayout: YaziLayout
+---@field layout_config { default?: NuiLayout.Box, maximised?: { main: NuiLayout.Box, side: { top: NuiLayout.Box, bottom: NuiLayout.Box } } }
+---@field side_popups { top: YaziSidePopup, bottom: YaziSidePopup }
+local TriplePane2ColumnLayout = {}
+TriplePane2ColumnLayout.__index = TriplePane2ColumnLayout
+TriplePane2ColumnLayout.__is_class = true
+setmetatable(TriplePane2ColumnLayout, { __index = Layout })
+
+---@param opts? { main_popup?: YaziMainPopup, side_popups?: { top: YaziSidePopup, bottom: YaziSidePopup }, help_popup?: YaziHelpPopup, extra_layout_opts?: nui_layout_options, layout_config?: { default?: (fun(main_popup: YaziMainPopup, side_popups: { top: YaziSidePopup, bottom: YaziSidePopup }, help_popup: YaziHelpPopup): NuiLayout.Box), maximised?: { main?: (fun(main_popup: YaziMainPopup, side_popups: { top: YaziSidePopup, bottom: YaziSidePopup }, help_popup: YaziHelpPopup): NuiLayout.Box), side?: { top?: (fun(main_popup: YaziMainPopup, side_popups: { top: YaziSidePopup, bottom: YaziSidePopup }, help_popup: YaziHelpPopup): NuiLayout.Box), bottom?: (fun(main_popup: YaziMainPopup, side_popups: { top: YaziSidePopup, bottom: YaziSidePopup }, help_popup: YaziHelpPopup): NuiLayout.Box) } } } }
+---@return YaziTriplePane2ColumnLayout
+function TriplePane2ColumnLayout.new(opts)
   opts = opts_utils.deep_extend({
-    main_popup = MainPopup.new(),
-    top_side_popup = SidePopup.new(),
-    bottom_side_popup = SidePopup.new(),
-    help_popup = HelpPopup.new(),
+    layout_config = {
+      default = function(main_popup, side_popups, help_popup)
+        return NuiLayout.Box({
+          NuiLayout.Box(main_popup, { size = "50%" }),
+          NuiLayout.Box({
+            NuiLayout.Box(side_popups.top, { size = "20%" }),
+            NuiLayout.Box(side_popups.bottom, { grow = 1 }),
+          }, { size = "50%", dir = "col" }),
+        }, { dir = "row" })
+      end,
+      maximised = {
+        main = function(main_popup, side_popups, help_popup)
+          return NuiLayout.Box({
+            NuiLayout.Box(main_popup, { size = "100%" }),
+          }, {})
+        end,
+        side = {
+          top = function(main_popup, side_popups, help_popup)
+            return NuiLayout.Box({
+              NuiLayout.Box(side_popups.top, { size = "100%" }),
+            }, {})
+          end,
+          bottom = function(main_popup, side_popups, help_popup)
+            return NuiLayout.Box({
+              NuiLayout.Box(side_popups.bottom, { size = "100%" }),
+            }, {})
+          end,
+        },
+      },
+    }
   }, opts)
-  ---@cast opts YaziLayoutTriplePane2ColumnOptions
 
-  local main_popup = opts.main_popup
-  local side_popups = {
-    top = opts.top_side_popup,
-    bottom = opts.bottom_side_popup,
-  }
-  local help_popup = opts.help_popup
-
-  if
-    not main_popup
-    or not side_popups.top
-    or not side_popups.bottom
-    or not help_popup
-  then
-    error("Some popups are missing")
+  if not opts.main_popup then opts.main_popup = MainPopup.new() end
+  -- TODO
+  if not opts.side_popups then
+    opts.side_popups = {
+      top = SidePopup.new(),
+      bottom = SidePopup.new(),
+    }
   end
+  if not opts.help_popup then opts.help_popup = HelpPopup.new() end
 
-  local layout_configs = {
-    default = NuiLayout.Box({
-      NuiLayout.Box(main_popup, { size = "50%" }),
-      NuiLayout.Box({
-        NuiLayout.Box(side_popups.top, { size = "20%" }),
-        NuiLayout.Box(side_popups.bottom, { grow = 1 }),
-      }, { size = "50%", dir = "col" }),
-    }, { dir = "row" }),
+  local layout_config = {
+    default = opts.layout_config.default(
+      opts.main_popup,
+      opts.side_popups,
+      opts.help_popup
+    ),
     maximised = {
-      main = NuiLayout.Box({
-        NuiLayout.Box(main_popup, { size = "100%" }),
-      }, {}),
+      main = opts.layout_config.maximised.main(
+        opts.main_popup,
+        opts.side_popups,
+        opts.help_popup
+      ),
       side = {
-        top = NuiLayout.Box({
-          NuiLayout.Box(side_popups.top, { size = "100%" }),
-        }, {}),
-        bottom = NuiLayout.Box({
-          NuiLayout.Box(side_popups.bottom, { size = "100%" }),
-        }, {}),
+        top = opts.layout_config.maximised.side.top(
+          opts.main_popup,
+          opts.side_popups,
+          opts.help_popup
+        ),
+        bottom = opts.layout_config.maximised.side.bottom(
+          opts.main_popup,
+          opts.side_popups,
+          opts.help_popup
+        ),
       },
     },
   }
 
-  local layout = NuiLayout({
-    position = "50%",
-    relative = "editor",
-    size = {
-      width = "90%",
-      height = "90%",
-    },
-  }, layout_configs.default)
+  local obj = Layout.new(layout_config.default, opts)
+  setmetatable(obj, TriplePane2ColumnLayout)
+  ---@cast obj YaziTriplePane2ColumnLayout
 
-  main_popup:map(
+  obj.layout_config = layout_config
+  obj.main_popup = opts.main_popup
+  obj.side_popups = opts.side_popups
+  obj.help_popup = opts.help_popup
+
+  return obj
+end
+
+function TriplePane2ColumnLayout:setup_keymaps()
+  Layout.setup_keymaps(self)
+
+  self.main_popup:map(
     config.keymaps.move_to_pane.right,
     "Move to side pane",
-    function() vim.api.nvim_set_current_win(side_popups.top.winid) end
+    function() self.side_popups.top:focus() end
   )
 
-  side_popups.top:map(
+  self.side_popups.top:map(
     "n",
     config.keymaps.move_to_pane.left,
-    function() vim.api.nvim_set_current_win(main_popup.winid) end
+    function() self.main_popup:focus() end
   )
 
-  side_popups.top:map(
+  self.side_popups.top:map(
     "n",
     config.keymaps.move_to_pane.bottom,
-    function() vim.api.nvim_set_current_win(side_popups.bottom.winid) end
+    function() self.side_popups.bottom:focus() end
   )
 
-  side_popups.bottom:map(
+  self.side_popups.bottom:map(
     "n",
     config.keymaps.move_to_pane.top,
-    function() vim.api.nvim_set_current_win(side_popups.top.winid) end
+    function() self.side_popups.top:focus() end
   )
 
-  side_popups.bottom:map(
-    "n",
-    config.keymaps.move_to_pane.left,
-    function() vim.api.nvim_set_current_win(main_popup.winid) end
+  self:_setup_popup_maximised_keymaps(
+    self.main_popup,
+    self.layout_config.maximised.main
   )
-
-  main_popup:map(config.keymaps.toggle_maximise, "Toggle maximise", function()
-    if main_popup:maximised() then
-      layout:update(layout_configs.default)
-      main_popup:set_maximised(false)
-      side_popups.top:set_maximised(false)
-      side_popups.bottom:set_maximised(false)
-    else
-      layout:update(layout_configs.maximised.main)
-      main_popup:set_maximised(true)
-      side_popups.top:set_maximised(false)
-      side_popups.bottom:set_maximised(false)
-    end
-  end)
-
-  side_popups.top:map("n", config.keymaps.toggle_maximise, function()
-    if side_popups.top:maximised() then
-      layout:update(layout_configs.default)
-      main_popup:set_maximised(false)
-      side_popups.top:set_maximised(false)
-      side_popups.bottom:set_maximised(false)
-    else
-      layout:update(layout_configs.maximised.side.top)
-      main_popup:set_maximised(false)
-      side_popups.top:set_maximised(true)
-      side_popups.bottom:set_maximised(false)
-    end
-  end)
-
-  side_popups.bottom:map("n", config.keymaps.toggle_maximise, function()
-    if side_popups.bottom:maximised() then
-      layout:update(layout_configs.default)
-      main_popup:set_maximised(false)
-      side_popups.top:set_maximised(false)
-      side_popups.bottom:set_maximised(false)
-    else
-      layout:update(layout_configs.maximised.side.bottom)
-      main_popup:set_maximised(false)
-      side_popups.top:set_maximised(false)
-      side_popups.bottom:set_maximised(true)
-    end
-  end)
-
-  main_popup:map(config.keymaps.show_help, "Show help", function()
-    if not help_popup:is_visible() then
-      help_popup:set_visible(true)
-      help_popup:mount()
-      help_popup:focus()
-    end
-  end)
-
-  help_popup:map("n", config.keymaps.hide_help, function()
-    if help_popup:is_visible() then
-      help_popup:set_visible(false)
-      help_popup:unmount()
-      -- Check if main popup is maximised
-      if main_popup:maximised() then
-        layout:update(layout_configs.maximised.main)
-      else
-        layout:update(layout_configs.default)
-      end
-      main_popup:focus()
-    end
-  end)
-
-  return layout,
-    {
-      main = main_popup,
-      side = side_popups,
-      help = help_popup,
-    }
+  self:_setup_popup_maximised_keymaps(
+    self.side_popups.top,
+    self.layout_config.maximised.side.top
+  )
+  self:_setup_popup_maximised_keymaps(
+    self.side_popups.bottom,
+    self.layout_config.maximised.side.bottom
+  )
 end
 
-return M
+return {
+  AbstractLayout = Layout,
+  SinglePaneLayout = SinglePaneLayout,
+  DualPaneLayout = DualPaneLayout,
+  TriplePaneLayout = TriplePaneLayout,
+  TriplePane2ColumnLayout = TriplePane2ColumnLayout,
+}

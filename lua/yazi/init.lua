@@ -1,17 +1,22 @@
 local uuid_utils = require("utils.uuid")
 local opts_utils = require("utils.opts")
-local config = require("yazi.config")
+local config = require("yazi.config").config
+local setup = require("yazi.config").setup
 local tbl_utils = require("utils.table")
 local IpcClient = require("yazi.ipc-client")
 local CallbackMap = require("yazi.callback-map")
 local terminal_utils = require("utils.terminal")
+
 local M = {}
 
 ---@alias YaziControllerId string
 ---@alias YaziUIHooks { show: function, hide: function, focus: function, destroy: function }
 
 ---@param opts? YaziSetupOptions
-function M.setup(opts) M.config = opts_utils.deep_extend(config, opts) end
+function M.setup(opts)
+  setup(opts)
+  config = require("yazi.config").config
+end
 
 -- Generic classes still WIP
 -- https://github.com/LuaLS/lua-language-server/issues/1861

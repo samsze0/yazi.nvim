@@ -5,51 +5,48 @@ local tbl_utils = require("utils.table")
 local terminal_utils = require("utils.terminal")
 
 ---@type nui_popup_options
-local base_popup_config = {
+local popup_opts = {
   focusable = true,
   border = {
     style = "rounded",
   },
-  buf_options = {
-    modifiable = true,
-  },
   win_options = {
     winblend = 0,
     winhighlight = "Normal:Normal,FloatBorder:FloatBorder",
-    number = false,
-    wrap = false,
   },
 }
 
----@type nui_popup_options
-local base_help_popup_config = {
-  win_options = {
-    wrap = true,
-  },
-  relative = "editor",
-  position = "50%",
-  size = {
-    width = "75%",
-    height = "75%",
-  },
-  zindex = 50,
-}
-base_help_popup_config =
-  opts_utils.deep_extend(base_popup_config, base_help_popup_config)
----@cast base_help_popup_config nui_popup_options
+---@class YaziPopup: NuiPopup
+local Popup = {}
+Popup.__index = Popup
+Popup.__is_class = true
+setmetatable(Popup, { __index = NuiPopup })
 
----@class YaziMainPopup: NuiPopup
+---@param opts? nui_popup_options
+---@return YaziPopup
+function Popup.new(opts)
+  opts = opts_utils.deep_extend(popup_opts, opts)
+
+  local obj = NuiPopup(opts)
+  setmetatable(obj, Popup)
+  ---@cast obj YaziPopup
+
+  return obj
+end
+
+function Popup:focus() vim.api.nvim_set_current_win(self.winid) end
+
+---@class YaziMainPopup: YaziPopup
 ---@field _yazi_keymaps table<string, string> Mappings of key to name (of the handler)
----@field _maximised boolean
 local MainPopup = {}
 MainPopup.__index = MainPopup
 MainPopup.__is_class = true
-setmetatable(MainPopup, { __index = NuiPopup })
+setmetatable(MainPopup, { __index = Popup })
 
 ---@param config? nui_popup_options
 ---@return YaziMainPopup
 function MainPopup.new(config)
-  config = opts_utils.deep_extend(base_popup_config, {
+  config = opts_utils.deep_extend({
     enter = false, -- This can mute BufEnter event
     buf_options = {
       modifiable = false,
@@ -58,25 +55,16 @@ function MainPopup.new(config)
     win_options = {},
   }, config)
 
-  local obj = NuiPopup(config)
+  local obj = Popup.new(config)
   setmetatable(obj, MainPopup)
   ---@cast obj YaziMainPopup
 
   obj._yazi_keymaps = {}
-  obj._maximised = false
 
   obj:on(NuiEvent.BufEnter, function() vim.cmd("startinsert!") end)
 
   return obj
 end
-
-function MainPopup:focus() vim.api.nvim_set_current_win(self.winid) end
-
----@return boolean
-function MainPopup:maximised() return self._maximised end
-
----@param maximised boolean
-function MainPopup:set_maximised(maximised) self._maximised = maximised end
 
 ---@param key string
 ---@param name? string Purpose of the handler
@@ -116,34 +104,31 @@ function MainPopup:map_remote(popup, name, key, opts)
   end, opts)
 end
 
----@class YaziSidePopup: NuiPopup
----@field _maximised boolean
+---@class YaziSidePopup: YaziPopup
 local SidePopup = {}
 SidePopup.__index = SidePopup
 SidePopup.__is_class = true
-setmetatable(SidePopup, { __index = NuiPopup })
+setmetatable(SidePopup, { __index = Popup })
 
----@param config? nui_popup_options
+---@param opts? nui_popup_options
 ---@return YaziSidePopup
-function SidePopup.new(config)
-  config = opts_utils.deep_extend(base_popup_config, {}, config)
+function SidePopup.new(opts)
+  opts = opts_utils.deep_extend({
+    buf_options = {
+      modifiable = true,
+    },
+    win_options = {
+      number = false,
+      wrap = false,
+    },
+  }, opts)
 
-  local obj = NuiPopup(config)
+  local obj = Popup.new(opts)
   setmetatable(obj, SidePopup)
   ---@cast obj YaziSidePopup
 
-  obj._maximised = false
-
   return obj
 end
-
-function SidePopup:focus() vim.api.nvim_set_current_win(self.winid) end
-
----@return boolean
-function SidePopup:maximised() return self._maximised end
-
----@param maximised boolean
-function SidePopup:set_maximised(maximised) self._maximised = maximised end
 
 ---@return string[]
 function SidePopup:get_lines()
@@ -205,32 +190,37 @@ function SidePopup:show_buf_content(buf, opts)
   self:show_file_content(path, { cursor_pos = opts.cursor_pos })
 end
 
----@class YaziHelpPopup: NuiPopup
----@field _visible boolean
+---@class YaziHelpPopup: YaziPopup
 local HelpPopup = {}
 HelpPopup.__index = HelpPopup
 HelpPopup.__is_class = true
-setmetatable(HelpPopup, { __index = NuiPopup })
+setmetatable(HelpPopup, { __index = Popup })
 
----@param config? nui_popup_options
+---@type nui_popup_options
+local help_popup_opts = {
+  win_options = {
+    wrap = true,
+  },
+  relative = "editor",
+  position = "50%",
+  size = {
+    width = "75%",
+    height = "75%",
+  },
+  zindex = 50,
+}
+
+---@param opts? nui_popup_options
 ---@return YaziHelpPopup
-function HelpPopup.new(config)
-  config = opts_utils.deep_extend(base_help_popup_config, {}, config)
+function HelpPopup.new(opts)
+  opts = opts_utils.deep_extend(help_popup_opts, opts)
 
-  local obj = NuiPopup(config)
+  local obj = Popup.new(opts)
   setmetatable(obj, HelpPopup)
   ---@cast obj YaziHelpPopup
 
   return obj
 end
-
-function HelpPopup:focus() vim.api.nvim_set_current_win(self.winid) end
-
----@return boolean
-function HelpPopup:is_visible() return self._visible end
-
----@param visible boolean
-function HelpPopup:set_visible(visible) self._visible = visible end
 
 ---@param lines string[]
 function HelpPopup:set_lines(lines)
@@ -248,6 +238,7 @@ function HelpPopup:set_keymaps(keymaps)
 end
 
 return {
+  AbstractPopup = Popup,
   MainPopup = MainPopup,
   SidePopup = SidePopup,
   HelpPopup = HelpPopup,

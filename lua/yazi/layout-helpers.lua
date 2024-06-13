@@ -1,10 +1,12 @@
 local opts_utils = require("utils.opts")
 local tbl_utils = require("utils.table")
 local terminal_utils = require("utils.terminal")
-local config = require("yazi.config")
+local config = require("yazi.config").config
 local jumplist = require("jumplist")
 local NuiEvent = require("nui.utils.autocmd").event
-local layouts = require("yazi.layout")
+local DualPaneLayout = require("yazi.layout").DualPaneLayout
+local TriplePaneLayout = require("yazi.layout").TriplePaneLayout
+local MainPopup = require("yazi.layout.popup").MainPopup
 local SidePopup = require("yazi.layout.popup").SidePopup
 
 local _info = config.notifier.info
@@ -15,25 +17,25 @@ local M = {}
 
 -- Configure remote navigation between main and target popup.
 --
----@param main_popup YaziMainPopup
+---@param layout YaziLayout
 ---@param target_popup YaziSidePopup
-M.configure_remote_nav = function(main_popup, target_popup)
-  main_popup:map_remote(
+M.configure_remote_nav = function(layout, target_popup)
+  layout.main_popup:map_remote(
     target_popup,
     "Scroll preview up",
     config.keymaps.remote_scroll_preview_pane.up
   )
-  main_popup:map_remote(
+  layout.main_popup:map_remote(
     target_popup,
     "Scroll preview left",
     config.keymaps.remote_scroll_preview_pane.left
   )
-  main_popup:map_remote(
+  layout.main_popup:map_remote(
     target_popup,
     "Scroll preview down",
     config.keymaps.remote_scroll_preview_pane.down
   )
-  main_popup:map_remote(
+  layout.main_popup:map_remote(
     target_popup,
     "Scroll preview right",
     config.keymaps.remote_scroll_preview_pane.right
@@ -42,15 +44,15 @@ end
 
 -- Configure file open keymaps
 --
----@param main_popup YaziMainPopup
+---@param layout YaziLayout
 ---@param controller YaziController
 ---@param opts { filepath_accessor: (fun(focus: any): string) }
-M.configure_file_open_keymaps = function(main_popup, controller, opts)
+M.configure_file_open_keymaps = function(layout, controller, opts)
   opts = opts_utils.extend({
     filepath_accessor = function(focus) return focus.filepath end,
   }, opts)
 
-  main_popup:map("<C-w>", "Open in new window", function()
+  layout.main_popup:map("<C-w>", "Open in new window", function()
     if not controller.focus then return end
 
     local filepath = opts.filepath_accessor(controller.focus)
@@ -58,7 +60,7 @@ M.configure_file_open_keymaps = function(main_popup, controller, opts)
     vim.cmd(([[vsplit %s]]):format(filepath))
   end)
 
-  main_popup:map("<C-t>", "Open in new tab", function()
+  layout.main_popup:map("<C-t>", "Open in new tab", function()
     if not controller.focus then return end
 
     local filepath = opts.filepath_accessor(controller.focus)
@@ -66,7 +68,7 @@ M.configure_file_open_keymaps = function(main_popup, controller, opts)
     vim.cmd(([[tabnew %s]]):format(filepath))
   end)
 
-  main_popup:map("<CR>", "Open", function()
+  layout.main_popup:map("<CR>", "Open", function()
     if not controller.focus then return end
 
     local filepath = opts.filepath_accessor(controller.focus)
@@ -78,11 +80,11 @@ end
 
 -- Configure file preview.
 --
----@param main_popup YaziMainPopup
+---@param layout YaziLayout
 ---@param preview_popup YaziSidePopup
 ---@param controller YaziController
 ---@param opts { setup_file_open_keymaps?: boolean, filepath_accessor: (fun(focus: any): string) }
-M.configure_filepreview = function(main_popup, preview_popup, controller, opts)
+M.configure_filepreview = function(layout, preview_popup, controller, opts)
   opts = opts_utils.extend({
     filepath_accessor = function(focus) return focus.filepath end,
   }, opts)
@@ -97,7 +99,7 @@ M.configure_filepreview = function(main_popup, preview_popup, controller, opts)
     preview_popup:show_file_content(opts.filepath_accessor(focus))
   end)
 
-  main_popup:map(config.keymaps.copy_filepath_to_clipboard, "Copy filepath", function()
+  layout.main_popup:map(config.keymaps.copy_filepath_to_clipboard, "Copy filepath", function()
     if not controller.focus then return end
 
     local filepath = opts.filepath_accessor(controller.focus)
@@ -106,35 +108,33 @@ M.configure_filepreview = function(main_popup, preview_popup, controller, opts)
   end)
 
   if opts.setup_file_open_keymaps then
-    M.configure_file_open_keymaps(main_popup, controller, opts)
+    M.configure_file_open_keymaps(layout, controller, opts)
   end
 end
 
----@param main_popup YaziMainPopup
----@param help_popup YaziHelpPopup
-M.configure_help_popup = function(main_popup, help_popup)
-  help_popup:set_keymaps(main_popup:keymaps())
+---@param layout YaziLayout
+M.configure_help_popup = function(layout)
+  layout.help_popup:set_keymaps(layout.main_popup:keymaps())
 end
 
----@param layout NuiLayout
----@param main_popup YaziMainPopup
+---@param layout YaziLayout
 ---@param controller YaziController
-M.configure_controller_ui_hooks = function(layout, main_popup, controller)
+M.configure_controller_ui_hooks = function(layout, controller)
   controller:set_ui_hooks({
     show = function() layout:show() end,
     hide = function() layout:hide() end,
-    focus = function() main_popup:focus() end,
+    focus = function() layout.main_popup:focus() end,
     destroy = function() layout:unmount() end,
   })
 end
 
--- Layout & popup configurations for previewing code
+-- Create yazi layout for previewing code
 --
----@alias YaziLayoutDualPaneCodePreviewOptions { filepath_accessor: (fun(focus: any): string), main_popup?: YaziMainPopup, side_popup?: YaziSidePopup, help_popup?: YaziHelpPopup }
+---@alias YaziCreateDualPaneCodePreviewLayoutOptions { filepath_accessor: (fun(focus: any): string), main_popup?: YaziMainPopup, side_popup?: YaziSidePopup, help_popup?: YaziHelpPopup }
 ---@param controller YaziController
----@param opts YaziLayoutDualPaneCodePreviewOptions
----@return NuiLayout, { main: YaziMainPopup, side: YaziSidePopup, help: YaziHelpPopup }
-M.dual_pane_code_preview = function(controller, opts)
+---@param opts YaziCreateDualPaneCodePreviewLayoutOptions
+---@return YaziDualPaneLayout
+M.create_dual_pane_code_preview_layout = function(controller, opts)
   opts = opts_utils.deep_extend({
     side_popup = SidePopup.new({
       win_options = {
@@ -143,32 +143,32 @@ M.dual_pane_code_preview = function(controller, opts)
       },
     })
   }, opts)
-  ---@cast opts YaziLayoutDualPaneCodePreviewOptions
+  ---@cast opts YaziCreateDualPaneCodePreviewLayoutOptions
 
-  local layout, popups = layouts.dual_pane({
+  local layout = DualPaneLayout.new({
     main_popup = opts.main_popup,
     side_popup = opts.side_popup,
-    help_popup = opts.help_popup,
   })
+  layout:setup_keymaps()
 
-  M.configure_controller_ui_hooks(layout, popups.main, controller)
-  M.configure_remote_nav(popups.main, popups.side)
-  M.configure_help_popup(popups.main, popups.help)
+  M.configure_controller_ui_hooks(layout, controller)
+  M.configure_remote_nav(layout, layout.side_popup)
+  M.configure_help_popup(layout)
 
-  M.configure_filepreview(popups.main, popups.side, controller, {
+  M.configure_filepreview(layout, layout.side_popup, controller, {
     setup_file_open_keymaps = true,
     filepath_accessor = opts.filepath_accessor,
   })
 
-  return layout, popups
+  return layout
 end
 
--- Layout & popup configurations for code diff
+-- Create yazi layout for code diff
 --
----@alias YaziLayoutTriplePaneCodeDiffOptions { filepath_accessor: (fun(focus: any): string), main_popup?: YaziMainPopup, left_preview_popup?: YaziSidePopup, right_preview_popup?: YaziSidePopup }
+---@alias YaziCreateTriplePaneCodeDiffLayoutOptions { filepath_accessor: (fun(focus: any): string), main_popup?: YaziMainPopup, left_preview_popup?: YaziSidePopup, right_preview_popup?: YaziSidePopup }
 ---@param controller YaziController
----@param opts? YaziLayoutTriplePaneCodeDiffOptions
----@return NuiLayout, { main: YaziMainPopup, side: { left: YaziSidePopup, right: YaziSidePopup }, help: YaziHelpPopup }
+---@param opts? YaziCreateTriplePaneCodeDiffLayoutOptions
+---@return YaziTriplePaneLayout
 M.triple_pane_code_diff = function(controller, opts)
   opts = opts_utils.deep_extend({
     left_preview_popup = SidePopup.new({
@@ -182,19 +182,22 @@ M.triple_pane_code_diff = function(controller, opts)
       },
     }),
   }, opts)
-  ---@cast opts YaziLayoutTriplePaneCodeDiffOptions
+  ---@cast opts YaziCreateTriplePaneCodeDiffLayoutOptions
 
-  local layout, popups = layouts.triple_pane({
+  local layout = TriplePaneLayout.new({
     main_popup = opts.main_popup,
-    left_side_popup = opts.left_preview_popup,
-    right_side_popup = opts.right_preview_popup,
+    side_popups = {
+      left = opts.left_preview_popup,
+      right = opts.right_preview_popup,
+    }
   })
+  layout:setup_keymaps()
 
-  M.configure_controller_ui_hooks(layout, popups.main, controller)
-  M.configure_remote_nav(popups.main, popups.side.left)
-  M.configure_help_popup(popups.main, popups.help)
+  M.configure_controller_ui_hooks(layout, controller)
+  M.configure_remote_nav(layout, layout.side_popups.left)
+  M.configure_help_popup(layout)
 
-  return layout, popups
+  return layout
 end
 
 return M
