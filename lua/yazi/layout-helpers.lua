@@ -52,7 +52,7 @@ M.configure_file_open_keymaps = function(layout, controller, opts)
     filepath_accessor = function(focus) return focus.filepath end,
   }, opts)
 
-  layout.main_popup:map("<C-w>", "Open in new window", function()
+  layout.main_popup:map(config.keymaps.file_open.new_window, "Open in new window", function()
     if not controller.focus then return end
 
     local filepath = opts.filepath_accessor(controller.focus)
@@ -60,7 +60,7 @@ M.configure_file_open_keymaps = function(layout, controller, opts)
     vim.cmd(([[vsplit %s]]):format(filepath))
   end)
 
-  layout.main_popup:map("<C-t>", "Open in new tab", function()
+  layout.main_popup:map(config.keymaps.file_open.new_tab, "Open in new tab", function()
     if not controller.focus then return end
 
     local filepath = opts.filepath_accessor(controller.focus)
@@ -68,7 +68,7 @@ M.configure_file_open_keymaps = function(layout, controller, opts)
     vim.cmd(([[tabnew %s]]):format(filepath))
   end)
 
-  layout.main_popup:map("<CR>", "Open", function()
+  layout.main_popup:map(config.keymaps.file_open.current_window, "Open", function()
     if not controller.focus then return end
 
     local filepath = opts.filepath_accessor(controller.focus)

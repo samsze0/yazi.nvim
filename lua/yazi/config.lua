@@ -29,6 +29,11 @@ M.default_config = {
     copy_filepath_to_clipboard = "<C-y>",
     show_help = "<C-?>",
     hide_help = "q",
+    file_open = {
+      new_window = "<C-w>",
+      new_tab = "<C-t>",
+      current_window = "<C-CR>",
+    }
   },
   default_extra_args = {},
   default_extra_env_vars = {},
