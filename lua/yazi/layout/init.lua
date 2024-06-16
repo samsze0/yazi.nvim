@@ -79,7 +79,7 @@ function Layout:_setup_popup_maximised_keymaps(popup, box)
       self:update(box)
       self.maximised_popup = popup
     end
-  end  
+  end
 
   if is_instance(popup, MainPopup) then
     ---@cast popup YaziMainPopup
@@ -98,7 +98,7 @@ SinglePaneLayout.__is_class = true
 setmetatable(SinglePaneLayout, { __index = Layout })
 
 ---@param opts? { main_popup?: YaziMainPopup, help_popup?: YaziSidePopup, extra_layout_opts?: nui_layout_options, layout_config?: { default?: fun(main_popup: YaziMainPopup, help_popup: YaziHelpPopup): NuiLayout.Box } }
----@return YaziLayout
+---@return YaziSinglePaneLayout
 function SinglePaneLayout.new(opts)
   opts = opts_utils.deep_extend({
     layout_config = {
@@ -107,7 +107,7 @@ function SinglePaneLayout.new(opts)
           NuiLayout.Box(main_popup, { size = "100%" }),
         }, {})
       end,
-    }
+    },
   }, opts)
 
   if not opts.main_popup then opts.main_popup = MainPopup.new() end
@@ -128,9 +128,7 @@ function SinglePaneLayout.new(opts)
   return obj
 end
 
-function SinglePaneLayout:setup_keymaps()
-  Layout.setup_keymaps(self)
-end
+function SinglePaneLayout:setup_keymaps() Layout.setup_keymaps(self) end
 
 ---@class YaziDualPaneLayout: YaziLayout
 ---@field layout_config { default?: NuiLayout.Box, maximised?: { main: NuiLayout.Box, side: NuiLayout.Box } }
@@ -163,7 +161,7 @@ function DualPaneLayout.new(opts)
           }, {})
         end,
       },
-    }
+    },
   }, opts)
 
   if not opts.main_popup then opts.main_popup = MainPopup.new() end
@@ -266,7 +264,7 @@ function TriplePaneLayout.new(opts)
           end,
         },
       },
-    }
+    },
   }, opts)
 
   if not opts.main_popup then opts.main_popup = MainPopup.new() end
@@ -400,7 +398,7 @@ function TriplePane2ColumnLayout.new(opts)
           end,
         },
       },
-    }
+    },
   }, opts)
 
   if not opts.main_popup then opts.main_popup = MainPopup.new() end
