@@ -47,11 +47,9 @@ end
 --
 ---@param layout YaziLayout
 ---@param controller YaziController
----@param opts { filepath_accessor: (fun(focus: any): string) }
+---@param opts { }
 M.configure_file_open_keymaps = function(layout, controller, opts)
-  opts = opts_utils.extend({
-    filepath_accessor = function(focus) return focus.filepath end,
-  }, opts)
+  opts = opts_utils.extend({}, opts)
 
   layout.main_popup:map(
     config.keymaps.file_open.new_window,
@@ -59,7 +57,7 @@ M.configure_file_open_keymaps = function(layout, controller, opts)
     function()
       if not controller.focus then return end
 
-      local filepath = opts.filepath_accessor(controller.focus)
+      local filepath = controller.focus.url
       controller:hide()
       vim.cmd(([[vsplit %s]]):format(filepath))
     end
@@ -71,7 +69,7 @@ M.configure_file_open_keymaps = function(layout, controller, opts)
     function()
       if not controller.focus then return end
 
-      local filepath = opts.filepath_accessor(controller.focus)
+      local filepath = controller.focus.url
       controller:hide()
       vim.cmd(([[tabnew %s]]):format(filepath))
     end
@@ -83,7 +81,7 @@ M.configure_file_open_keymaps = function(layout, controller, opts)
     function()
       if not controller.focus then return end
 
-      local filepath = opts.filepath_accessor(controller.focus)
+      local filepath = controller.focus.url
       controller:hide()
       jumplist.save()
       vim.cmd(([[e %s]]):format(filepath))
@@ -96,20 +94,18 @@ end
 ---@param layout YaziLayout
 ---@param preview_popup YaziSidePopup
 ---@param controller YaziController
----@param opts { setup_file_open_keymaps?: boolean, filepath_accessor: (fun(focus: any): string) }
+---@param opts { setup_file_open_keymaps?: boolean }
 M.configure_filepreview = function(layout, preview_popup, controller, opts)
-  opts = opts_utils.extend({
-    filepath_accessor = function(focus) return focus.filepath end,
-  }, opts)
+  opts = opts_utils.extend({}, opts)
 
-  controller:subscribe("focus", function(payload)
+  controller:on_hover(function(payload)
     local focus = controller.focus
 
     preview_popup:set_lines({})
 
     if not focus then return end
 
-    preview_popup:show_file_content(opts.filepath_accessor(focus))
+    preview_popup:show_file_content(focus.url)
   end)
 
   layout.main_popup:map(
@@ -118,7 +114,7 @@ M.configure_filepreview = function(layout, preview_popup, controller, opts)
     function()
       if not controller.focus then return end
 
-      local filepath = opts.filepath_accessor(controller.focus)
+      local filepath = controller.focus.url
       vim.fn.setreg("+", filepath)
       _info(([[Copied %s to clipboard]]):format(filepath))
     end
@@ -163,12 +159,16 @@ M.create_single_pane_layout = function(controller, opts)
   M.configure_controller_ui_hooks(layout, controller)
   M.configure_help_popup(layout)
 
+  M.configure_file_open_keymaps(layout, controller, {
+    setup_file_open_keymaps = true,
+  })
+
   return layout
 end
 
 -- Create yazi layout for previewing code
 --
----@alias YaziCreateDualPaneCodePreviewLayoutOptions { filepath_accessor: (fun(focus: any): string), main_popup?: YaziMainPopup, side_popup?: YaziSidePopup, help_popup?: YaziHelpPopup }
+---@alias YaziCreateDualPaneCodePreviewLayoutOptions { main_popup?: YaziMainPopup, side_popup?: YaziSidePopup, help_popup?: YaziHelpPopup }
 ---@param controller YaziController
 ---@param opts YaziCreateDualPaneCodePreviewLayoutOptions
 ---@return YaziDualPaneLayout
@@ -195,7 +195,6 @@ M.create_dual_pane_code_preview_layout = function(controller, opts)
 
   M.configure_filepreview(layout, layout.side_popup, controller, {
     setup_file_open_keymaps = true,
-    filepath_accessor = opts.filepath_accessor,
   })
 
   return layout
@@ -203,7 +202,7 @@ end
 
 -- Create yazi layout for code diff
 --
----@alias YaziCreateTriplePaneCodeDiffLayoutOptions { filepath_accessor: (fun(focus: any): string), main_popup?: YaziMainPopup, left_preview_popup?: YaziSidePopup, right_preview_popup?: YaziSidePopup }
+---@alias YaziCreateTriplePaneCodeDiffLayoutOptions { main_popup?: YaziMainPopup, left_preview_popup?: YaziSidePopup, right_preview_popup?: YaziSidePopup }
 ---@param controller YaziController
 ---@param opts? YaziCreateTriplePaneCodeDiffLayoutOptions
 ---@return YaziTriplePaneLayout
