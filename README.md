@@ -10,23 +10,32 @@ A neovim plugin that provides integration with [yazi](https://github.com/sxyazi/
 
 ## Usage
 
+With lazy.nvim:
 ```lua
 {
     "samsze0/yazi.nvim",
     config = function()
         require("yazi").setup({})
-    end
+    end,
+    dependencies = {
+        "samsze0/utils.nvim",
+        "MunifTanjim/nui.nvim"
+    }
 }
 ```
 
 ```lua
-local YaziController = require("yazi").Controller
+local yazi = require("yazi")
+local yazi_layout_helpers = require("yazi.layout-helpers")
 
-YaziController.new():start()
+local controller = yazi.Controller.new()
+local layout = yazi_layout_helpers.create_single_pane_layout(controller, {})
+controller:start()
 ```
 
 ## TODO
 
+- Provide more user friendly API with sane OOTB defaults
 - Provide option to warn user if a keymap of a popup is being overridden
 - Support customizing helper layouts and popups
 - Focus back to prev win after closing popup
