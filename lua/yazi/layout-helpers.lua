@@ -157,11 +157,12 @@ M.create_single_pane_layout = function(controller, opts)
   layout:setup_keymaps()
 
   M.configure_controller_ui_hooks(layout, controller)
-  M.configure_help_popup(layout)
 
   M.configure_file_open_keymaps(layout, controller, {
     setup_file_open_keymaps = true,
   })
+
+  M.configure_help_popup(layout)
 
   return layout
 end
@@ -191,11 +192,12 @@ M.create_dual_pane_code_preview_layout = function(controller, opts)
 
   M.configure_controller_ui_hooks(layout, controller)
   M.configure_remote_nav(layout, layout.side_popup)
-  M.configure_help_popup(layout)
 
   M.configure_filepreview(layout, layout.side_popup, controller, {
     setup_file_open_keymaps = true,
   })
+
+  M.configure_help_popup(layout)
 
   return layout
 end
