@@ -25,17 +25,14 @@ With lazy.nvim:
 ```
 
 ```lua
-local yazi = require("yazi")
-local yazi_layout_helpers = require("yazi.layout-helpers")
+local YaziBasicInstance = require("yazi.instance").BasicInstance
 
-local controller = yazi.Controller.new()
-local layout = yazi_layout_helpers.create_single_pane_layout(controller, {})
-controller:start()
+local yazi = YaziBasicInstance.new({})
+yazi:start()
 ```
 
 ## TODO
 
-- Provide more user friendly API with sane OOTB defaults
 - Provide option to warn user if a keymap of a popup is being overridden
 - Focus back to prev win after closing popup
 - Yazi event unsubscription
