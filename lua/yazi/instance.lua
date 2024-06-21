@@ -11,11 +11,15 @@ local _info = config.notifier.info
 local _warn = config.notifier.warn
 local _error = config.notifier.error
 
+local M = {}
+
 ---@class YaziInstance : YaziController
 ---@field layout YaziLayout
 local Instance = {}
 Instance.__index = Instance
 Instance.__is_class = true
+
+M.Instance = Instance
 
 -- Configure remote navigation between main and target popup.
 --
@@ -113,6 +117,8 @@ local BasicInstance = {}
 BasicInstance.__index = BasicInstance
 BasicInstance.__is_class = true
 
+M.BasicInstance = BasicInstance
+
 ---@param opts? YaziCreateControllerOptions
 ---@return YaziBasicInstance
 function BasicInstance.new(opts)
@@ -134,6 +140,8 @@ end
 local PowerInstance = {}
 PowerInstance.__index = PowerInstance
 PowerInstance.__is_class = true
+
+M.PowerInstance = PowerInstance
 
 ---@param opts? YaziCreateControllerOptions
 ---@return YaziPowerInstance
@@ -182,3 +190,5 @@ function PowerInstance:_setup_filepreview(opts)
 
   Instance._setup_file_open_keymaps(self, {})
 end
+
+return M
