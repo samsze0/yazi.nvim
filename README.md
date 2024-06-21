@@ -35,8 +35,9 @@ yazi:start()
 ## TODO
 
 - Provide option to warn user if a keymap of a popup is being overridden
-- Focus back to prev win after closing popup
 - Yazi event unsubscription
+- Refine helper popup
+- Power instance
 
 ## License
 
