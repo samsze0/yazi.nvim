@@ -19,7 +19,8 @@ With lazy.nvim:
     end,
     dependencies = {
         "samsze0/utils.nvim",
-        "MunifTanjim/nui.nvim"
+        "MunifTanjim/nui.nvim",
+        "samsze0/jumplist.nvim"  -- Optional
     }
 }
 ```

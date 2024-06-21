@@ -30,13 +30,38 @@ local Controller = {}
 Controller.__index = Controller
 Controller.__is_class = true
 
--- Map of controller ID to controller.
+-- Index of active controllers
 -- A singleton.
 --
----@class YaziControllerMap
----@field [YaziControllerId] YaziController
-local ControllerMap = {}
-M.ControllerMap = ControllerMap
+---@class YaziControllersIndex
+---@field _id_map table<YaziControllerId, YaziController>
+---@field most_recent? YaziController
+local ControllersIndex = {
+  _id_map = {},
+  most_recent = nil,
+}
+ControllersIndex.__index = ControllersIndex
+ControllersIndex.__is_class = true
+
+-- Retrieve a controller by its ID
+--
+---@param id YaziControllerId
+---@return YaziController | nil
+function ControllersIndex.get(id) return ControllersIndex._id_map[id] end
+
+-- Remove a controller by its ID
+--
+---@param id YaziControllerId
+function ControllersIndex.remove(id) ControllersIndex._id_map[id] = nil end
+
+-- Add a controller to the index
+--
+---@param controller YaziController
+function ControllersIndex.add(controller)
+  ControllersIndex._id_map[controller._id] = controller
+end
+
+M.ControllersIndex = ControllersIndex
 
 M.Controller = Controller
 
@@ -88,7 +113,7 @@ function Controller.new(opts)
     _exited = false,
   }
   setmetatable(controller, Controller)
-  ControllerMap[controller_id] = controller
+  ControllersIndex.add(controller)
 
   ---@cast controller YaziController
 
@@ -104,7 +129,10 @@ function Controller:_destroy()
   self._ipc_client:destroy()
   self._ui_hooks:destroy()
 
-  ControllerMap[self._id] = nil
+  ControllersIndex.remove(self._id)
+  if ControllersIndex.most_recent == self then
+    ControllersIndex.most_recent = nil
+  end
 end
 
 -- Retrieve prev window (before opening yazi)
@@ -142,15 +170,23 @@ function Controller:show_and_focus()
 
   self._ui_hooks.show()
   self._ui_hooks.focus()
+
+  ControllersIndex.most_recent = self
 end
 
 -- Hide the UI
-function Controller:hide()
+--
+---@param opts? { restore_focus?: boolean }
+function Controller:hide(opts)
+  opts = opts_utils.extend({ restore_focus = true }, opts)
+
   if not self._ui_hooks then
     error("UI hooks missing. Please first set them up")
   end
 
   self._ui_hooks.hide()
+
+  if opts.restore_focus then vim.api.nvim_set_current_win(self:prev_win()) end
 end
 
 ---@param hooks YaziUIHooks

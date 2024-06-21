@@ -1,4 +1,3 @@
-local ControllerMap = require("yazi.controller").ControllerMap
 local Controller = require("yazi.controller").Controller
 local SinglePaneLayout = require("yazi.layout").SinglePaneLayout
 local DualPaneLayout = require("yazi.layout").DualPaneLayout
@@ -6,6 +5,8 @@ local config = require("yazi.config").config
 local opts_utils = require("utils.opts")
 local lang_utils = require("utils.lang")
 local safe_require = lang_utils.safe_require
+
+---@module 'jumplist'
 local jumplist = safe_require("jumplist")
 
 local _info = config.notifier.info
