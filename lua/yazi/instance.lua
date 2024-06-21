@@ -1,4 +1,5 @@
 local ControllerMap = require("yazi.controller").ControllerMap
+local Controller = require("yazi.controller").Controller
 local SinglePaneLayout = require("yazi.layout").SinglePaneLayout
 local DualPaneLayout = require("yazi.layout").DualPaneLayout
 local config = require("yazi.config").config
@@ -18,8 +19,18 @@ local M = {}
 local Instance = {}
 Instance.__index = Instance
 Instance.__is_class = true
+setmetatable(Instance, { __index = Controller })
 
 M.Instance = Instance
+
+---@param opts? YaziCreateControllerOptions
+---@return YaziInstance
+function Instance.new(opts)
+  local obj = Controller.new(opts)
+  setmetatable(obj, Instance)
+  ---@cast obj YaziInstance
+  return obj
+end
 
 -- Configure remote navigation between main and target popup.
 --
@@ -116,6 +127,7 @@ end
 local BasicInstance = {}
 BasicInstance.__index = BasicInstance
 BasicInstance.__is_class = true
+setmetatable(BasicInstance, { __index = Instance })
 
 M.BasicInstance = BasicInstance
 
@@ -123,6 +135,7 @@ M.BasicInstance = BasicInstance
 ---@return YaziBasicInstance
 function BasicInstance.new(opts)
   local obj = Instance.new(opts)
+  setmetatable(obj, BasicInstance)
   ---@cast obj YaziBasicInstance
 
   local layout = SinglePaneLayout.new({})
@@ -140,6 +153,7 @@ end
 local PowerInstance = {}
 PowerInstance.__index = PowerInstance
 PowerInstance.__is_class = true
+setmetatable(PowerInstance, { __index = Instance })
 
 M.PowerInstance = PowerInstance
 
@@ -147,6 +161,7 @@ M.PowerInstance = PowerInstance
 ---@return YaziPowerInstance
 function PowerInstance.new(opts)
   local obj = Instance.new(opts)
+  setmetatable(obj, PowerInstance)
   ---@cast obj YaziPowerInstance
 
   local layout = DualPaneLayout.new({})
