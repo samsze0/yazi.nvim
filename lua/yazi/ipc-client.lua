@@ -7,6 +7,7 @@ local str_utils = require("utils.string")
 
 ---@class YaziIpcClient
 ---@field _event_map YaziEventMap Map of events to lua callbacks
+---@field _id string ID of the yazi instance
 local YaziIpcClient = {}
 YaziIpcClient.__index = YaziIpcClient
 YaziIpcClient.__is_class = true
@@ -19,11 +20,15 @@ function YaziIpcClient.new()
   return obj
 end
 
--- Send an action to yazi to execute
+-- Send a remote message to a running yazi instance
 --
----@param action string
-function YaziIpcClient:execute(action)
-  -- TODO
+---@param payload any
+function YaziIpcClient:send(payload)
+  local cmd = ("ya pub nvim %s --json %s"):format(
+    self._id,
+    vim.fn.shellescape(vim.json.encode(payload))
+  )
+  terminal_utils.system_unsafe(cmd)
 end
 
 -- Subscribe to a yazi event
@@ -56,7 +61,24 @@ function YaziIpcClient:on_message(message)
     return
   end
   local event = parts[1]
+  local receiver_id = parts[2]
+  local sender_id_or_severity = parts[3]
   local message = vim.json.decode(parts[4])
+
+  if
+    not event
+    or not receiver_id
+    or not sender_id_or_severity
+    or not message
+  then
+    vim.error("Invalid message format: ", message)
+    return
+  end
+
+  if not self._id then self._id = receiver_id end
+  if receiver_id ~= self._id then
+    vim.error("Receiver ID does not match: ", receiver_id, self._id)
+  end
 
   local callbacks = self._event_map:get(event)
   for _, callback in ipairs(callbacks) do

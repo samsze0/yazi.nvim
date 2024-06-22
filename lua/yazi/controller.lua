@@ -20,12 +20,12 @@ local M = {}
 ---@field _extra_args? ShellOpts Extra arguments to pass to yazi
 ---@field _ui_hooks? YaziUIHooks UI hooks
 ---@field _extra_env_vars? ShellOpts Extra environment variables to pass to yazi
----@field _prev_win? number Previous window before opening yazi
+---@field _prev_win? integer Previous window before opening yazi
 ---@field _on_exited_subscribers YaziCallbackMap Map of subscribers of the exit event
 ---@field _started boolean Whether the controller has started
 ---@field _exited boolean Whether the controller has exited
----@field _job_id number Job ID of the yazi process
----@field _events_reader_job_id number Job ID of the events reader process
+---@field _job_id string Job ID of the yazi process
+---@field _events_reader_job_id string Job ID of the events reader process
 local Controller = {}
 Controller.__index = Controller
 Controller.__is_class = true
@@ -137,12 +137,12 @@ end
 
 -- Retrieve prev window (before opening yazi)
 --
----@return number
+---@return integer
 function Controller:prev_win() return self._prev_win end
 
 -- Retrieve prev buffer (before opening yazi)
 --
----@return number
+---@return integer
 function Controller:prev_buf()
   local win = self:prev_win()
   return vim.api.nvim_win_get_buf(win)
@@ -157,7 +157,7 @@ end
 
 -- Retrieve prev tab (before opening yazi)
 --
----@return number
+---@return integer
 function Controller:prev_tab()
   return vim.api.nvim_win_get_tabpage(self:prev_win())
 end
@@ -205,6 +205,7 @@ function Controller:start()
       "trash",
       "delete",
     }, ","),
+    ["--remote-events"] = "nvim", -- make yazi accepts remote events with name "nvim"
   }
   args =
     tbl_utils.tbl_extend({ mode = "error" }, args, config.default_extra_args)
@@ -270,10 +271,10 @@ function Controller:start()
   self._started = true
 end
 
--- Send an action to yazi to execute
+-- Send a message to the running yazi instance
 --
----@param action string
-function Controller:execute(action) return self._ipc_client:execute(action) end
+---@param payload any
+function Controller:send(payload) return self._ipc_client:send(payload) end
 
 -- Subscribe to yazi event
 --
@@ -286,21 +287,21 @@ end
 
 -- Subscribe to the "cd" event
 --
----@alias YaziCdEventPayload { tab: number, url: string }
+---@alias YaziCdEventPayload { tab: string, url: string }
 ---@param callback fun(payload: YaziCdEventPayload)
 ---@return fun(): nil Unsubscribe
 function Controller:on_cd(callback) return self:subscribe("cd", callback) end
 
 -- Subscribe to the "hover" event
 --
----@alias YaziHoverEventPayload { tab: number, url: string }
+---@alias YaziHoverEventPayload { tab: string, url: string }
 ---@param callback fun(payload: YaziHoverEventPayload)
 ---@return fun(): nil Unsubscribe
 function Controller:on_hover(callback) return self:subscribe("hover", callback) end
 
 -- Subscribe to the "rename" event
 --
----@alias YaziRenameEventPayload { tab: number, from: string, to: string }
+---@alias YaziRenameEventPayload { tab: string, from: string, to: string }
 ---@param callback fun(payload: YaziRenameEventPayload)
 ---@return fun(): nil Unsubscribe
 function Controller:on_rename(callback)
