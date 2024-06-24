@@ -5,9 +5,12 @@ local os_utils = require("utils.os")
 local EventMap = require("yazi.event-map")
 local str_utils = require("utils.string")
 
+-- FIX: better method for deduplication of hover message (or perhaps eliminate need to dedup)
+
 ---@class YaziIpcClient
 ---@field _event_map YaziEventMap Map of events to lua callbacks
 ---@field _id string ID of the yazi instance
+---@field _prev_hover any Previous hover message. For deduplication
 local YaziIpcClient = {}
 YaziIpcClient.__index = YaziIpcClient
 YaziIpcClient.__is_class = true
@@ -75,6 +78,11 @@ function YaziIpcClient:on_message(message)
     vim.error("Receiver ID does not match: ", receiver_id, self._id)
   end
 
+  if event == "hover" then
+    if vim.deep_equal(self._prev_hover, body) then return end
+    self._prev_hover = body
+  end
+
   if event == "nvim" then
     if not type(body.type) == "string" then
       vim.error("Invalid body for custom event: ", body)
@@ -82,8 +90,6 @@ function YaziIpcClient:on_message(message)
     end
     event = body.type
   end
-
-  vim.info(event, body)
 
   local callbacks = self._event_map:get(event)
   for _, callback in ipairs(callbacks) do

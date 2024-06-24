@@ -5,6 +5,7 @@ local config = require("yazi.config").config
 local opts_utils = require("utils.opts")
 local lang_utils = require("utils.lang")
 local safe_require = lang_utils.safe_require
+local terminal_utils = require("utils.terminal")
 
 ---@module 'jumplist'
 local jumplist = safe_require("jumplist")
@@ -119,6 +120,9 @@ M.PowerInstance = PowerInstance
 ---@param opts? YaziCreateInstanceOptions
 ---@return YaziPowerInstance
 function PowerInstance.new(opts)
+  -- TODO: remove this once file preview feature is ready
+  error("Not ready")
+
   local obj = Instance.new(opts)
   setmetatable(obj, PowerInstance)
   ---@cast obj YaziPowerInstance
@@ -148,7 +152,7 @@ function PowerInstance:_setup_filepreview(opts)
       self:set_preview_visibility(false)
       return
     end
-
+    
     if vim.fn.filereadable(focus.url) == 1 then
       self.layout:restore_layout()
       self:set_preview_visibility(false)
