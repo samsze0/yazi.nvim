@@ -20,7 +20,7 @@ function YaziIpcClient.new()
   return obj
 end
 
--- Send a remote message to a running yazi instance
+-- Send a remote message of kind "nvim" to a running yazi instance
 --
 ---@param payload any
 function YaziIpcClient:send(payload)

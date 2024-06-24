@@ -378,6 +378,21 @@ function Controller:on_scroll_preview(callback)
   return self:subscribe("scroll-preview", callback)
 end
 
+-- Set the visibility of yazi's preview pane by sending a remote event
+--
+---@param val boolean
+function Controller:set_preview_visibility(val)
+  return self:send({ type = "preview-visibility", value = val })
+end
+
+-- Set yazi's current directory to the given path
+--
+---@param path string
+function Controller:reveal(path)
+  -- TODO: add checking for path
+  return self:send({ type = "reveal", path = path })
+end
+
 function Controller:started() return self._started end
 
 function Controller:exited() return self._exited end

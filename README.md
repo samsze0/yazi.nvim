@@ -38,6 +38,7 @@ yazi:start()
 - Yazi event unsubscription
 - Refine helper popup
 - Power instance
+- Log out yazi's errors
 
 ## License
 
