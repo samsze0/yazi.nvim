@@ -26,7 +26,7 @@ M.Instance = Instance
 
 ---@class YaziCreateInstanceOptions : YaziCreateControllerOptions
 
----@param opts? YaziCreateControllerOptions
+---@param opts? YaziCreateInstanceOptions
 ---@return YaziInstance
 function Instance.new(opts)
   local obj = Controller.new(opts)
@@ -35,84 +35,42 @@ function Instance.new(opts)
   return obj
 end
 
--- Configure remote navigation between main and target popup.
---
----@param target_popup YaziSidePopup
----@param opts? { }
-function Instance:_setup_remote_nav_keymaps(target_popup, opts)
-  opts = opts_utils.extend({}, opts)
-
-  self.layout.main_popup:map_remote(
-    target_popup,
-    "Scroll preview up",
-    config.keymaps.remote_scroll_preview_pane.up
-  )
-  self.layout.main_popup:map_remote(
-    target_popup,
-    "Scroll preview left",
-    config.keymaps.remote_scroll_preview_pane.left
-  )
-  self.layout.main_popup:map_remote(
-    target_popup,
-    "Scroll preview down",
-    config.keymaps.remote_scroll_preview_pane.down
-  )
-  self.layout.main_popup:map_remote(
-    target_popup,
-    "Scroll preview right",
-    config.keymaps.remote_scroll_preview_pane.right
-  )
-end
+---@class YaziKeymapsOptions.file_open
+---@field new_window string?
+---@field new_tab string?
+---@field current_window string?
 
 -- Configure file open keymaps
 --
----@param opts? { }
-function Instance:_setup_file_open_keymaps(opts)
+---@param opts? YaziKeymapsOptions.file_open
+function Instance:setup_file_open_keymaps(opts)
   opts = opts_utils.extend({}, opts)
+  ---@cast opts YaziKeymapsOptions.file_open
 
-  self.layout.main_popup:map(
-    config.keymaps.file_open.new_window,
-    "Open in new window",
-    function()
-      if not self.focus then return end
+  self.layout.main_popup:map(opts.new_window, "Open in new window", function()
+    if not self.focus then return end
 
-      local filepath = self.focus.url
-      self:hide()
-      vim.cmd(([[vsplit %s]]):format(filepath))
-    end
-  )
+    local filepath = self.focus.url
+    self:hide()
+    vim.cmd(([[vsplit %s]]):format(filepath))
+  end)
 
-  self.layout.main_popup:map(
-    config.keymaps.file_open.new_tab,
-    "Open in new tab",
-    function()
-      if not self.focus then return end
+  self.layout.main_popup:map(opts.new_tab, "Open in new tab", function()
+    if not self.focus then return end
 
-      local filepath = self.focus.url
-      self:hide()
-      vim.cmd(([[tabnew %s]]):format(filepath))
-    end
-  )
+    local filepath = self.focus.url
+    self:hide()
+    vim.cmd(([[tabnew %s]]):format(filepath))
+  end)
 
-  self.layout.main_popup:map(
-    config.keymaps.file_open.current_window,
-    "Open",
-    function()
-      if not self.focus then return end
+  self.layout.main_popup:map(opts.current_window, "Open", function()
+    if not self.focus then return end
 
-      local filepath = self.focus.url
-      self:hide()
-      if jumplist then jumplist.save() end
-      vim.cmd(([[e %s]]):format(filepath))
-    end
-  )
-end
-
--- Configure help popup
---
----@param opts? { }
-function Instance:_setup_help_popup(opts)
-  self.layout.help_popup:set_keymaps(self.layout.main_popup:keymaps())
+    local filepath = self.focus.url
+    self:hide()
+    if jumplist then jumplist.save() end
+    vim.cmd(([[e %s]]):format(filepath))
+  end)
 end
 
 -- Configure controller UI hooks
@@ -134,7 +92,7 @@ setmetatable(BasicInstance, { __index = Instance })
 
 M.BasicInstance = BasicInstance
 
----@param opts? YaziCreateControllerOptions
+---@param opts? YaziCreateInstanceOptions
 ---@return YaziBasicInstance
 function BasicInstance.new(opts)
   local obj = Instance.new(opts)
@@ -145,8 +103,6 @@ function BasicInstance.new(opts)
   obj.layout = layout
 
   Instance._setup_controller_ui_hooks(obj)
-  Instance._setup_file_open_keymaps(obj, {})
-  Instance._setup_help_popup(obj, {})
 
   return obj
 end
@@ -160,7 +116,7 @@ setmetatable(PowerInstance, { __index = Instance })
 
 M.PowerInstance = PowerInstance
 
----@param opts? YaziCreateControllerOptions
+---@param opts? YaziCreateInstanceOptions
 ---@return YaziPowerInstance
 function PowerInstance.new(opts)
   local obj = Instance.new(opts)
@@ -170,10 +126,8 @@ function PowerInstance.new(opts)
   local layout = DualPaneLayout.new({})
   obj.layout = layout
 
-  Instance._setup_remote_nav_keymaps(obj.layout.side_popup, {})
   obj:_setup_filepreview({})
   Instance._setup_controller_ui_hooks(obj)
-  Instance._setup_help_popup(obj, {})
 
   return obj
 end
@@ -189,9 +143,20 @@ function PowerInstance:_setup_filepreview(opts)
 
     self.layout.side_popup:set_lines({})
 
-    if not focus then return end
+    if not focus then
+      self.layout:maximise_popup("main")
+      self:set_preview_visibility(false)
+      return
+    end
 
-    self.layout.side_popup:show_file_content(focus.url)
+    if vim.fn.filereadable(focus.url) == 1 then
+      self.layout:restore_layout()
+      self:set_preview_visibility(false)
+      self.layout.side_popup:show_file_content(focus.url)
+    else
+      self.layout:maximise_popup("main")
+      self:set_preview_visibility(true)
+    end
   end)
 
   self.layout.main_popup:map(
@@ -205,8 +170,6 @@ function PowerInstance:_setup_filepreview(opts)
       _info(([[Copied %s to clipboard]]):format(filepath))
     end
   )
-
-  Instance._setup_file_open_keymaps(self, {})
 end
 
 return M

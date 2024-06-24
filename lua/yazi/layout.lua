@@ -4,6 +4,8 @@ local SidePopup = require("yazi.popup").SidePopup
 local HelpPopup = require("yazi.popup").HelpPopup
 local config = require("yazi.config").config
 local opts_utils = require("utils.opts")
+local lang_utils = require("utils.lang")
+local match = lang_utils.match
 
 local _info = config.notifier.info
 local _warn = config.notifier.warn
@@ -24,6 +26,8 @@ local layout_opts = {
 ---@field layout_config { default: NuiLayout.Box }
 ---@field main_popup YaziMainPopup
 ---@field help_popup YaziHelpPopup
+---@field maximise_popup fun(self: YaziLayout, popup_name: string)
+---@field restore_layout fun(self: YaziLayout)
 local Layout = {}
 Layout.__index = Layout
 Layout.__is_class = true
@@ -47,16 +51,24 @@ function Layout.new(box, opts)
 end
 
 function Layout:setup_keymaps()
-  self.main_popup:map(config.keymaps.show_help, "Show help", function()
-    self.help_popup:show()
-    self.help_popup:focus()
-  end)
+  -- TODO: uncomment this once "help" feature is ready
+  -- self.main_popup:map(config.keymaps.show_help, "Show help", function()
+  --   self.help_popup:show()
+  --   self.help_popup:focus()
+  -- end)
+  --
+  -- self.help_popup:map(
+  --   "n",
+  --   config.keymaps.hide_help,
+  --   function() self.help_popup:hide() end
+  -- )
+end
 
-  self.help_popup:map(
-    "n",
-    config.keymaps.hide_help,
-    function() self.help_popup:hide() end
-  )
+function Layout:restore_layout()
+  if self.maximised_popup then
+    self:update(self.layout_config.default)
+    self.maximised_popup = nil
+  end
 end
 
 -- TODO: move isinstance function to oop utils
@@ -69,24 +81,27 @@ local function is_instance(o, class)
 end
 
 ---@param popup YaziPopup
----@param box NuiLayout.Box
-function Layout:_setup_popup_maximised_keymaps(popup, box)
+---@param maximised_layout NuiLayout.Box
+function Layout:_maximise_popup(popup, maximised_layout)
   local fn = function()
     if self.maximised_popup == popup then
       self:update(self.layout_config.default)
       self.maximised_popup = nil
     else
-      self:update(box)
+      self:update(maximised_layout)
       self.maximised_popup = popup
     end
   end
 
-  if is_instance(popup, MainPopup) then
-    ---@cast popup YaziMainPopup
-    popup:map(config.keymaps.toggle_maximise, "Toggle maximise", fn)
-  else
-    popup:map("n", config.keymaps.toggle_maximise, fn)
-  end
+  fn()
+
+  -- TODO: move this to popup class
+  -- if is_instance(popup, MainPopup) then
+  --   ---@cast popup YaziMainPopup
+  --   popup:map(config.keymaps.toggle_maximise, "Toggle maximise", fn)
+  -- else
+  --   popup:map("n", config.keymaps.toggle_maximise, fn)
+  -- end
 end
 
 ---@class YaziSinglePaneLayout: YaziLayout
@@ -237,15 +252,20 @@ function DualPaneLayout:setup_keymaps()
     config.keymaps.move_to_pane.left,
     function() self.main_popup:focus() end
   )
+end
 
-  self:_setup_popup_maximised_keymaps(
-    self.main_popup,
-    self.layout_config.maximised.main
-  )
-  self:_setup_popup_maximised_keymaps(
-    self.side_popup,
-    self.layout_config.maximised.side
-  )
+---@param popup_name "main" | "side"
+function DualPaneLayout:maximise_popup(popup_name)
+  local popup = match(popup_name, {
+    ["main"] = self.main_popup,
+    ["side"] = self.side_popup,
+  })
+  local maximised_layout = match(popup_name, {
+    ["main"] = self.layout_config.maximised.main,
+    ["side"] = self.layout_config.maximised.side,
+  })
+
+  Layout._maximise_popup(self, popup, maximised_layout)
 end
 
 ---@class YaziTriplePaneLayout: YaziLayout
@@ -382,19 +402,22 @@ function TriplePaneLayout:setup_keymaps()
     config.keymaps.move_to_pane.left,
     function() self.side_popups.left:focus() end
   )
+end
 
-  self:_setup_popup_maximised_keymaps(
-    self.main_popup,
-    self.layout_config.maximised.main
-  )
-  self:_setup_popup_maximised_keymaps(
-    self.side_popups.left,
-    self.layout_config.maximised.side.left
-  )
-  self:_setup_popup_maximised_keymaps(
-    self.side_popups.right,
-    self.layout_config.maximised.side.right
-  )
+---@param popup_name "main" | "side-left" | "side-right"
+function TriplePaneLayout:maximise_popup(popup_name)
+  local popup = match(popup_name, {
+    ["main"] = self.main_popup,
+    ["side-left"] = self.side_popups.left,
+    ["side-right"] = self.side_popups.right,
+  })
+  local maximised_layout = match(popup_name, {
+    ["main"] = self.layout_config.maximised.main,
+    ["side-left"] = self.layout_config.maximised.side.left,
+    ["side-right"] = self.layout_config.maximised.side.right,
+  })
+
+  Layout._maximise_popup(self, popup, maximised_layout)
 end
 
 ---@class YaziTriplePane2ColumnLayout: YaziLayout
@@ -533,19 +556,22 @@ function TriplePane2ColumnLayout:setup_keymaps()
     config.keymaps.move_to_pane.top,
     function() self.side_popups.top:focus() end
   )
+end
 
-  self:_setup_popup_maximised_keymaps(
-    self.main_popup,
-    self.layout_config.maximised.main
-  )
-  self:_setup_popup_maximised_keymaps(
-    self.side_popups.top,
-    self.layout_config.maximised.side.top
-  )
-  self:_setup_popup_maximised_keymaps(
-    self.side_popups.bottom,
-    self.layout_config.maximised.side.bottom
-  )
+---@param popup_name "main" | "side-top" | "side-bottom"
+function TriplePane2ColumnLayout:maximise_popup(popup_name)
+  local popup = match(popup_name, {
+    ["main"] = self.main_popup,
+    ["side-top"] = self.side_popups.top,
+    ["side-bottom"] = self.side_popups.bottom,
+  })
+  local maximised_layout = match(popup_name, {
+    ["main"] = self.layout_config.maximised.main,
+    ["side-top"] = self.layout_config.maximised.side.top,
+    ["side-bottom"] = self.layout_config.maximised.side.bottom,
+  })
+
+  Layout._maximise_popup(self, popup, maximised_layout)
 end
 
 return {
