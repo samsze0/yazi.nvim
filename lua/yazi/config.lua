@@ -1,7 +1,36 @@
 local opts_utils = require("utils.opts")
 
----@alias YaziNotifier { info?: fun(message: string), warn?: fun(message: string), error?: fun(message: string) }
----@alias YaziKeymapsOptions { move_to_pane?: { left?: string, down?: string, up?: string, right?: string }, remote_scroll_preview_pane?: { up?: string, down?: string, left?: string, right?: string }, toggle_maximise?: string, copy_filepath_to_clipboard?: string, show_help?: string, hide_help?: string, file_open?: { new_window?: string, new_tab?: string, current_window?: string } }
+---@class YaziNotifier
+---@field info fun(message: string)?
+---@field warn fun(message: string)?
+---@field error fun(message: string)?
+
+---@class YaziKeymapsOptions.move_to_pane
+---@field left string?
+---@field down string?
+---@field up string?
+---@field right string?
+
+---@class YaziKeymapsOptions.remote_scroll_preview_pane
+---@field up string?
+---@field down string?
+---@field left string?
+---@field right string?
+
+---@class YaziKeymapsOptions.file_open
+---@field new_window string?
+---@field new_tab string?
+---@field current_window string?
+
+---@class YaziKeymapsOptions
+---@field move_to_pane YaziKeymapsOptions.move_to_pane?
+---@field remote_scroll_preview_pane YaziKeymapsOptions.remote_scroll_preview_pane?
+---@field toggle_maximise string?
+---@field copy_filepath_to_clipboard string?
+---@field show_help string?
+---@field hide_help string?
+---@field file_open YaziKeymapsOptions.file_open?
+
 ---@alias YaziSetupOptions { keymaps?: YaziKeymapsOptions, default_extra_args?: ShellOpts, default_extra_env_vars?: ShellOpts }
 
 local M = {}

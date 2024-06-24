@@ -63,14 +63,9 @@ function YaziIpcClient:on_message(message)
   local event = parts[1]
   local receiver_id = parts[2]
   local sender_id_or_severity = parts[3]
-  local message = vim.json.decode(parts[4])
+  local body = vim.json.decode(parts[4])
 
-  if
-    not event
-    or not receiver_id
-    or not sender_id_or_severity
-    or not message
-  then
+  if not event or not receiver_id or not sender_id_or_severity or not body then
     vim.error("Invalid message format: ", message)
     return
   end
@@ -80,9 +75,19 @@ function YaziIpcClient:on_message(message)
     vim.error("Receiver ID does not match: ", receiver_id, self._id)
   end
 
+  if event == "nvim" then
+    if not type(body.type) == "string" then
+      vim.error("Invalid body for custom event: ", body)
+      return
+    end
+    event = body.type
+  end
+
+  vim.info(event, body)
+
   local callbacks = self._event_map:get(event)
   for _, callback in ipairs(callbacks) do
-    callback(message)
+    callback(body)
   end
 end
 

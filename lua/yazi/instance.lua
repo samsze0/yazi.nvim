@@ -24,6 +24,8 @@ setmetatable(Instance, { __index = Controller })
 
 M.Instance = Instance
 
+---@class YaziCreateInstanceOptions : YaziCreateControllerOptions
+
 ---@param opts? YaziCreateControllerOptions
 ---@return YaziInstance
 function Instance.new(opts)

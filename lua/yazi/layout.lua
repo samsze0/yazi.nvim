@@ -97,7 +97,13 @@ SinglePaneLayout.__index = SinglePaneLayout
 SinglePaneLayout.__is_class = true
 setmetatable(SinglePaneLayout, { __index = Layout })
 
----@param opts? { main_popup?: YaziMainPopup, help_popup?: YaziSidePopup, extra_layout_opts?: nui_layout_options, layout_config?: { default?: fun(main_popup: YaziMainPopup, help_popup: YaziHelpPopup): NuiLayout.Box } }
+---@class YaziCreateSinglePaneLayoutOptions
+---@field main_popup? YaziMainPopup
+---@field help_popup? YaziHelpPopup
+---@field extra_layout_opts? nui_layout_options
+---@field layout_config? { default?: fun(main_popup: YaziMainPopup, help_popup: YaziHelpPopup): NuiLayout.Box }
+
+---@param opts? YaziCreateSinglePaneLayoutOptions
 ---@return YaziSinglePaneLayout
 function SinglePaneLayout.new(opts)
   opts = opts_utils.deep_extend({
@@ -138,7 +144,24 @@ DualPaneLayout.__index = DualPaneLayout
 DualPaneLayout.__is_class = true
 setmetatable(DualPaneLayout, { __index = Layout })
 
----@param opts? { main_popup?: YaziMainPopup, side_popup?: YaziSidePopup, help_popup?: YaziHelpPopup, extra_layout_opts?: nui_layout_options, layout_config?: { default?: (fun(main_popup: YaziMainPopup, side_popup: YaziSidePopup, help_popup: YaziHelpPopup): NuiLayout.Box), maximised?: { main?: (fun(main_popup: YaziMainPopup, side_popup: YaziSidePopup, help_popup: YaziHelpPopup): NuiLayout.Box), side?: (fun(main_popup: YaziMainPopup, side_popup: YaziSidePopup, help_popup: YaziHelpPopup): NuiLayout.Box) } } }
+---@alias YaziCreateDualPaneLayoutOptions.layout_config.fn fun(main_popup: YaziMainPopup, side_popup: YaziSidePopup, help_popup: YaziHelpPopup): NuiLayout.Box
+
+---@class YaziCreateDualPaneLayoutOptions.layout_config.maximised
+---@field main YaziCreateDualPaneLayoutOptions.layout_config.fn
+---@field side YaziCreateDualPaneLayoutOptions.layout_config.fn
+
+---@class YaziCreateDualPaneLayoutOptions.layout_config
+---@field default YaziCreateDualPaneLayoutOptions.layout_config.fn
+---@field maximised YaziCreateDualPaneLayoutOptions.layout_config.maximised
+
+---@class YaziCreateDualPaneLayoutOptions
+---@field main_popup? YaziMainPopup
+---@field side_popup? YaziSidePopup
+---@field help_popup? YaziHelpPopup
+---@field extra_layout_opts? nui_layout_options
+---@field layout_config? YaziCreateDualPaneLayoutOptions.layout_config
+
+---@param opts? YaziCreateDualPaneLayoutOptions
 ---@return YaziDualPaneLayout
 function DualPaneLayout.new(opts)
   opts = opts_utils.deep_extend({
@@ -233,7 +256,24 @@ TriplePaneLayout.__index = TriplePaneLayout
 TriplePaneLayout.__is_class = true
 setmetatable(TriplePaneLayout, { __index = Layout })
 
----@param opts? { main_popup?: YaziMainPopup, side_popups?: { left: YaziSidePopup, right: YaziSidePopup }, help_popup?: YaziHelpPopup, extra_layout_opts?: nui_layout_options, layout_config?: { default?: (fun(main_popup: YaziMainPopup, side_popups: { left: YaziSidePopup, right: YaziSidePopup }, help_popup: YaziHelpPopup): NuiLayout.Box), maximised?: { main?: (fun(main_popup: YaziMainPopup, side_popups: { left: YaziSidePopup, right: YaziSidePopup }, help_popup: YaziHelpPopup): NuiLayout.Box), side?: { left?: (fun(main_popup: YaziMainPopup, side_popups: { left: YaziSidePopup, right: YaziSidePopup }, help_popup: YaziHelpPopup): NuiLayout.Box), right?: (fun(main_popup: YaziMainPopup, side_popups: { left: YaziSidePopup, right: YaziSidePopup }, help_popup: YaziHelpPopup): NuiLayout.Box) } } } }
+---@alias YaziCreateTriplePaneLayoutOptions.layout_config.fn fun(main_popup: YaziMainPopup, side_popups: { left: YaziSidePopup, right: YaziSidePopup }, help_popup: YaziHelpPopup): NuiLayout.Box
+
+---@class YaziCreateTriplePaneLayoutOptions.layout_config.maximised
+---@field main? YaziCreateTriplePaneLayoutOptions.layout_config.fn
+---@field side? { left?: YaziCreateTriplePaneLayoutOptions.layout_config.fn, right?: YaziCreateTriplePaneLayoutOptions.layout_config.fn }
+
+---@class YaziCreateTriplePaneLayoutOptions.layout_config
+---@field default? YaziCreateTriplePaneLayoutOptions.layout_config.fn
+---@field maximised? YaziCreateTriplePaneLayoutOptions.layout_config.maximised
+
+---@class YaziCreateTriplePaneLayoutOptions
+---@field main_popup? YaziMainPopup
+---@field side_popups? { left: YaziSidePopup, right: YaziSidePopup }
+---@field help_popup? YaziHelpPopup
+---@field extra_layout_opts? nui_layout_options
+---@field layout_config? YaziCreateTriplePaneLayoutOptions.layout_config
+
+---@param opts? YaziCreateTriplePaneLayoutOptions
 ---@return YaziTriplePaneLayout
 function TriplePaneLayout.new(opts)
   opts = opts_utils.deep_extend({
@@ -365,7 +405,24 @@ TriplePane2ColumnLayout.__index = TriplePane2ColumnLayout
 TriplePane2ColumnLayout.__is_class = true
 setmetatable(TriplePane2ColumnLayout, { __index = Layout })
 
----@param opts? { main_popup?: YaziMainPopup, side_popups?: { top: YaziSidePopup, bottom: YaziSidePopup }, help_popup?: YaziHelpPopup, extra_layout_opts?: nui_layout_options, layout_config?: { default?: (fun(main_popup: YaziMainPopup, side_popups: { top: YaziSidePopup, bottom: YaziSidePopup }, help_popup: YaziHelpPopup): NuiLayout.Box), maximised?: { main?: (fun(main_popup: YaziMainPopup, side_popups: { top: YaziSidePopup, bottom: YaziSidePopup }, help_popup: YaziHelpPopup): NuiLayout.Box), side?: { top?: (fun(main_popup: YaziMainPopup, side_popups: { top: YaziSidePopup, bottom: YaziSidePopup }, help_popup: YaziHelpPopup): NuiLayout.Box), bottom?: (fun(main_popup: YaziMainPopup, side_popups: { top: YaziSidePopup, bottom: YaziSidePopup }, help_popup: YaziHelpPopup): NuiLayout.Box) } } } }
+---@alias YaziCreateTriplePane2ColumnLayoutOptions.layout_config.fn fun(main_popup: YaziMainPopup, side_popups: { top: YaziSidePopup, bottom: YaziSidePopup }, help_popup: YaziHelpPopup): NuiLayout.Box
+
+---@class YaziCreateTriplePane2ColumnLayoutOptions.layout_config.maximised
+---@field main? YaziCreateTriplePane2ColumnLayoutOptions.layout_config.fn
+---@field side? { top?: YaziCreateTriplePane2ColumnLayoutOptions.layout_config.fn, bottom?: YaziCreateTriplePane2ColumnLayoutOptions.layout_config.fn }
+
+---@class YaziCreateTriplePane2ColumnLayoutOptions.layout_config
+---@field default? YaziCreateTriplePane2ColumnLayoutOptions.layout_config.fn
+---@field maximised? YaziCreateTriplePane2ColumnLayoutOptions.layout_config.maximised
+
+---@class YaziCreateTriplePane2ColumnLayoutOptions
+---@field main_popup? YaziMainPopup
+---@field side_popups? { top: YaziSidePopup, bottom: YaziSidePopup }
+---@field help_popup? YaziHelpPopup
+---@field extra_layout_opts? nui_layout_options
+---@field layout_config? YaziCreateTriplePane2ColumnLayoutOptions.layout_config
+
+---@param opts? YaziCreateTriplePane2ColumnLayoutOptions
 ---@return YaziTriplePane2ColumnLayout
 function TriplePane2ColumnLayout.new(opts)
   opts = opts_utils.deep_extend({

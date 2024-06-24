@@ -65,9 +65,13 @@ M.ControllersIndex = ControllersIndex
 
 M.Controller = Controller
 
+---@class YaziCreateControllerOptions
+---@field extra_args? ShellOpts
+---@field extra_env_vars? ShellOpts
+---@field path? string
+
 -- Create controller
 --
----@alias YaziCreateControllerOptions { extra_args?: ShellOpts, extra_env_vars?: ShellOpts, path?: string }
 ---@param opts? YaziCreateControllerOptions
 ---@return YaziController
 function Controller.new(opts)
@@ -204,8 +208,9 @@ function Controller:start()
       "move",
       "trash",
       "delete",
+      "nvim", -- make yazi allow publishing events of "nvim" kind
     }, ","),
-    ["--remote-events"] = "nvim", -- make yazi accepts remote events with name "nvim"
+    ["--remote-events"] = "nvim", -- make yazi accepts remote events of "nvim" kind
   }
   args =
     tbl_utils.tbl_extend({ mode = "error" }, args, config.default_extra_args)
@@ -217,7 +222,9 @@ function Controller:start()
     .. " > "
     .. events_destination
 
-  local env_vars = {}
+  local env_vars = {
+    ["NVIM_YAZI"] = 1,
+  }
   env_vars = tbl_utils.tbl_extend(
     { mode = "error" },
     env_vars,
@@ -343,6 +350,32 @@ function Controller:on_trash(callback) return self:subscribe("trash", callback) 
 ---@return fun(): nil Unsubscribe
 function Controller:on_delete(callback)
   return self:subscribe("delete", callback)
+end
+
+-- Subscribe to the custom "delete" event
+-- Yazi plugin "nvim.yazi" is required for this event
+--
+---@alias YaziQuitEventPayload { }
+---@param callback fun(payload: YaziQuitEventPayload)
+---@return fun(): nil Unsubscribe
+function Controller:on_quit(callback) return self:subscribe("quit", callback) end
+
+-- Subscribe to the custom "delete" event
+-- Yazi plugin "nvim.yazi" is required for this event
+--
+---@alias YaziOpenEventPayload { }
+---@param callback fun(payload: YaziOpenEventPayload)
+---@return fun(): nil Unsubscribe
+function Controller:on_open(callback) return self:subscribe("open", callback) end
+
+-- Subscribe to the custom "delete" event
+-- Yazi plugin "nvim.yazi" is required for this event
+--
+---@alias YaziScrollPreviewEventPayload { value: number }
+---@param callback fun(payload: YaziScrollPreviewEventPayload)
+---@return fun(): nil Unsubscribe
+function Controller:on_scroll_preview(callback)
+  return self:subscribe("scroll-preview", callback)
 end
 
 function Controller:started() return self._started end
