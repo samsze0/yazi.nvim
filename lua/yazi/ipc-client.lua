@@ -5,7 +5,7 @@ local os_utils = require("utils.os")
 local EventMap = require("yazi.event-map")
 local str_utils = require("utils.string")
 
--- FIX: better method for deduplication of hover message (or perhaps eliminate need to dedup)
+-- FIX: when yazi is resized/rerendered, a dupilcate hover event is emitted(?)
 
 ---@class YaziIpcClient
 ---@field _event_map YaziEventMap Map of events to lua callbacks
@@ -27,6 +27,7 @@ end
 --
 ---@param payload any
 function YaziIpcClient:send(payload)
+  -- FIX: error not being reported
   local cmd = ("ya pub nvim %s --json %s"):format(
     self._id,
     vim.fn.shellescape(vim.json.encode(payload))
@@ -73,10 +74,11 @@ function YaziIpcClient:on_message(message)
     return
   end
 
-  if not self._id then self._id = receiver_id end
-  if receiver_id ~= self._id then
-    vim.error("Receiver ID does not match: ", receiver_id, self._id)
-  end
+  -- TODO: ID handling
+  -- if not self._id then self._id = receiver_id end
+  -- if receiver_id ~= self._id then
+  --   vim.error("Receiver ID does not match: ", receiver_id, self._id)
+  -- end
 
   if event == "hover" then
     if vim.deep_equal(self._prev_hover, body) then return end

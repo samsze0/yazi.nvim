@@ -16,6 +16,7 @@ local M = {}
 ---@class YaziController
 ---@field _id YaziControllerId The id of the controller
 ---@field focus? YaziFocusedEntry The currently focused entry
+---@field preview_visible? boolean Whether the preview pane is visible. Value is nil if unknown
 ---@field _ipc_client YaziIpcClient The ipc client
 ---@field _extra_args? ShellOpts Extra arguments to pass to yazi
 ---@field _ui_hooks? YaziUIHooks UI hooks
@@ -121,6 +122,9 @@ function Controller.new(opts)
 
   ---@cast controller YaziController
 
+  controller:on_preview(
+    function(payload) controller.preview_visible = payload.visible end
+  )
   controller:on_hover(function(payload) controller.focus = payload end)
 
   return controller
@@ -208,7 +212,10 @@ function Controller:start()
       "move",
       "trash",
       "delete",
-      "nvim", -- make yazi allow publishing events of "nvim" kind
+
+      -- Custom events
+      "nvim",
+      "preview",
     }, ","),
     ["--remote-events"] = "nvim", -- make yazi accepts remote events of "nvim" kind
   }
@@ -216,7 +223,8 @@ function Controller:start()
     tbl_utils.tbl_extend({ mode = "error" }, args, config.default_extra_args)
   args = tbl_utils.tbl_extend({ mode = "error" }, args, self._extra_args)
 
-  local events_destination = "/tmp/yazi.nvim-" .. self._id
+  -- local events_destination = "/tmp/yazi.nvim-" .. self._id
+  local events_destination = "/tmp/yazi.event"
   local command = "yazi "
     .. terminal_utils.shell_opts_tostring(args)
     .. " > "
@@ -244,11 +252,13 @@ function Controller:start()
 
   local events_reader_job_id =
     vim.fn.jobstart("tail -f " .. events_destination, {
-      on_stdout = function(job_id, message)
-        self._ipc_client:on_message(table.concat(message, "\n"))
+      on_stdout = function(job_id, messages)
+        for _, m in ipairs(vim.list_slice(messages, nil, #messages - 1)) do
+          self._ipc_client:on_message(m)
+        end
       end,
-      on_stderr = function(job_id, message)
-        vim.error("Error reading yazi events: ", table.concat(message, "\n"))
+      on_stderr = function(job_id, messages)
+        vim.error("Error reading yazi events: ", table.concat(messages, "\n"))
       end,
     })
   if events_reader_job_id == 0 or events_reader_job_id == -1 then
@@ -378,14 +388,27 @@ function Controller:on_scroll_preview(callback)
   return self:subscribe("scroll-preview", callback)
 end
 
+-- Subscribe to the custom "preview" event
+-- Yazi plugin "nvim.yazi" is required for this event
+--
+---@alias YaziPreviewEventPayload { visible: boolean }
+---@param callback fun(payload: YaziPreviewEventPayload)
+---@return fun(): nil Unsubscribe
+function Controller:on_preview(callback)
+  return self:subscribe("preview", callback)
+end
+
 -- Set the visibility of yazi's preview pane by sending a remote event
+-- Yazi plugin "nvim.yazi" is required for this event
 --
 ---@param val boolean
 function Controller:set_preview_visibility(val)
-  return self:send({ type = "preview-visibility", value = val })
+  if self.preview_visible == val then return end
+  return self:send({ type = "toggle-preview" })
 end
 
 -- Set yazi's current directory to the given path
+-- Yazi plugin "nvim.yazi" is required for this event
 --
 ---@param path string
 function Controller:reveal(path)
