@@ -362,7 +362,7 @@ function Controller:on_delete(callback)
   return self:subscribe("delete", callback)
 end
 
--- Subscribe to the custom "delete" event
+-- Subscribe to the custom "quit" event
 -- Yazi plugin "nvim.yazi" is required for this event
 --
 ---@alias YaziQuitEventPayload { }
@@ -370,7 +370,7 @@ end
 ---@return fun(): nil Unsubscribe
 function Controller:on_quit(callback) return self:subscribe("quit", callback) end
 
--- Subscribe to the custom "delete" event
+-- Subscribe to the custom "open" event
 -- Yazi plugin "nvim.yazi" is required for this event
 --
 ---@alias YaziOpenEventPayload { }
@@ -378,7 +378,7 @@ function Controller:on_quit(callback) return self:subscribe("quit", callback) en
 ---@return fun(): nil Unsubscribe
 function Controller:on_open(callback) return self:subscribe("open", callback) end
 
--- Subscribe to the custom "delete" event
+-- Subscribe to the custom "scroll-preview" event
 -- Yazi plugin "nvim.yazi" is required for this event
 --
 ---@alias YaziScrollPreviewEventPayload { value: number }
