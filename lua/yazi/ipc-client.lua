@@ -28,7 +28,7 @@ end
 ---@param payload any
 function YaziIpcClient:send(payload)
   -- FIX: error not being reported
-  local cmd = ("ya pub nvim %s --json %s"):format(
+  local cmd = ("ya pub from-nvim %s --json %s"):format(
     self._id,
     vim.fn.shellescape(vim.json.encode(payload))
   )
@@ -75,17 +75,14 @@ function YaziIpcClient:on_message(message)
   end
 
   -- TODO: ID handling
-  -- if not self._id then self._id = receiver_id end
-  -- if receiver_id ~= self._id then
-  --   vim.error("Receiver ID does not match: ", receiver_id, self._id)
-  -- end
+  if not self._id then self._id = receiver_id end
 
   if event == "hover" then
     if vim.deep_equal(self._prev_hover, body) then return end
     self._prev_hover = body
   end
 
-  if event == "nvim" then
+  if event == "to-nvim" then
     if not type(body.type) == "string" then
       vim.error("Invalid body for custom event: ", body)
       return

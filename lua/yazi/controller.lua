@@ -7,6 +7,10 @@ local IpcClient = require("yazi.ipc-client")
 local terminal_utils = require("utils.terminal")
 local str_utils = require("utils.string")
 
+local _info = config.notifier.info
+local _warn = config.notifier.warn
+local _error = config.notifier.error
+
 local M = {}
 
 ---@alias YaziControllerId string
@@ -122,7 +126,7 @@ function Controller.new(opts)
 
   ---@cast controller YaziController
 
-  controller:on_preview(
+  controller:on_preview_visibility(
     function(payload) controller.preview_visible = payload.visible end
   )
   controller:on_hover(function(payload) controller.focus = payload end)
@@ -214,17 +218,16 @@ function Controller:start()
       "delete",
 
       -- Custom events
-      "nvim",
-      "preview",
+      "to-nvim",
+      "preview-visibility",
     }, ","),
-    ["--remote-events"] = "nvim", -- make yazi accepts remote events of "nvim" kind
+    ["--remote-events"] = "from-nvim", -- make yazi accepts remote events of "from-nvim" kind
   }
   args =
     tbl_utils.tbl_extend({ mode = "error" }, args, config.default_extra_args)
   args = tbl_utils.tbl_extend({ mode = "error" }, args, self._extra_args)
 
-  -- local events_destination = "/tmp/yazi.nvim-" .. self._id
-  local events_destination = "/tmp/yazi.event"
+  local events_destination = "/tmp/yazi.nvim-" .. self._id
   local command = "yazi "
     .. terminal_utils.shell_opts_tostring(args)
     .. " > "
@@ -388,14 +391,14 @@ function Controller:on_scroll_preview(callback)
   return self:subscribe("scroll-preview", callback)
 end
 
--- Subscribe to the custom "preview" event
+-- Subscribe to the custom "preview-visibility" event
 -- Yazi plugin "nvim.yazi" is required for this event
 --
----@alias YaziPreviewEventPayload { visible: boolean }
----@param callback fun(payload: YaziPreviewEventPayload)
+---@alias YaziPreviewVisibilityEventPayload { visible: boolean }
+---@param callback fun(payload: YaziPreviewVisibilityEventPayload)
 ---@return fun(): nil Unsubscribe
-function Controller:on_preview(callback)
-  return self:subscribe("preview", callback)
+function Controller:on_preview_visibility(callback)
+  return self:subscribe("preview-visibility", callback)
 end
 
 -- Set the visibility of yazi's preview pane by sending a remote event
@@ -404,7 +407,16 @@ end
 ---@param val boolean
 function Controller:set_preview_visibility(val)
   if self.preview_visible == val then return end
-  return self:send({ type = "toggle-preview" })
+  return self:send({
+    type = "preview-visibility",
+    value = val and "show" or "hide",
+  })
+end
+
+-- Toggle the visibility of yazi's preview pane by sending a remote event
+-- Yazi plugin "nvim.yazi" is required for this event
+function Controller:toggle_preview_visibility()
+  return self:send({ type = "preview-visibility", value = "toggle" })
 end
 
 -- Set yazi's current directory to the given path

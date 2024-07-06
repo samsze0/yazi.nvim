@@ -39,6 +39,8 @@ yazi:start()
 - Refine helper popup
 - Power instance
 - Log out yazi's errors
+- Feature: dim inactive pane/window's border
+- Map move shortcut to noop if no pane exists in that direction
 
 ## License
 

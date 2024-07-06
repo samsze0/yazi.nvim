@@ -50,7 +50,7 @@ function Layout.new(box, opts)
   return obj
 end
 
-function Layout:setup_keymaps()
+function Layout:_setup_keymaps()
   -- TODO: uncomment this once "help" feature is ready
   -- self.main_popup:map(config.keymaps.show_help, "Show help", function()
   --   self.help_popup:show()
@@ -146,10 +146,12 @@ function SinglePaneLayout.new(opts)
   obj.main_popup = opts.main_popup
   obj.help_popup = opts.help_popup
 
+  obj:_setup_keymaps()
+
   return obj
 end
 
-function SinglePaneLayout:setup_keymaps() Layout.setup_keymaps(self) end
+function SinglePaneLayout:_setup_keymaps() Layout._setup_keymaps(self) end
 
 ---@class YaziDualPaneLayout: YaziLayout
 ---@field layout_config { default?: NuiLayout.Box, maximised?: { main: NuiLayout.Box, side: NuiLayout.Box } }
@@ -235,11 +237,13 @@ function DualPaneLayout.new(opts)
   obj.side_popup = opts.side_popup
   obj.help_popup = opts.help_popup
 
+  obj:_setup_keymaps()
+
   return obj
 end
 
-function DualPaneLayout:setup_keymaps()
-  Layout.setup_keymaps(self)
+function DualPaneLayout:_setup_keymaps()
+  Layout._setup_keymaps(self)
 
   self.main_popup:map(
     config.keymaps.move_to_pane.right,
@@ -373,11 +377,13 @@ function TriplePaneLayout.new(opts)
   obj.side_popups = opts.side_popups
   obj.help_popup = opts.help_popup
 
+  obj:_setup_keymaps()
+
   return obj
 end
 
-function TriplePaneLayout:setup_keymaps()
-  Layout.setup_keymaps(self)
+function TriplePaneLayout:_setup_keymaps()
+  Layout._setup_keymaps(self)
 
   self.main_popup:map(
     config.keymaps.move_to_pane.right,
@@ -527,11 +533,13 @@ function TriplePane2ColumnLayout.new(opts)
   obj.side_popups = opts.side_popups
   obj.help_popup = opts.help_popup
 
+  obj:_setup_keymaps()
+
   return obj
 end
 
-function TriplePane2ColumnLayout:setup_keymaps()
-  Layout.setup_keymaps(self)
+function TriplePane2ColumnLayout:_setup_keymaps()
+  Layout._setup_keymaps(self)
 
   self.main_popup:map(
     config.keymaps.move_to_pane.right,
