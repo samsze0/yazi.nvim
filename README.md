@@ -18,6 +18,7 @@ With lazy.nvim:
         require("yazi").setup({})
     end,
     dependencies = {
+        "samsze0/tui.nvim",
         "samsze0/utils.nvim",
         "MunifTanjim/nui.nvim",
         "samsze0/jumplist.nvim"  -- Optional
@@ -26,21 +27,13 @@ With lazy.nvim:
 ```
 
 ```lua
-local YaziBasicInstance = require("yazi.instance").BasicInstance
+local YaziPowerInstance = require("yazi.instance").PowerInstance
 
-local yazi = YaziBasicInstance.new({})
+local yazi = YaziPowerInstance.new({})
 yazi:start()
 ```
 
 ## TODO
-
-- Provide option to warn user if a keymap of a popup is being overridden
-- Yazi event unsubscription
-- Refine helper popup
-- Power instance
-- Log out yazi's errors
-- Feature: dim inactive pane/window's border
-- Map move shortcut to noop if no pane exists in that direction
 
 ## License
 
