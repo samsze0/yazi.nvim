@@ -2,7 +2,6 @@ local setup = require("yazi.config").setup
 
 local M = {}
 
----@param opts? YaziSetupOptions
-function M.setup(opts) setup(opts) end
+M.setup = setup
 
 return M

@@ -1,8 +1,10 @@
+local Controller = require("tui.controller")
+local ControllerMap = require("tui.controller-map")
 local uuid_utils = require("utils.uuid")
 local opts_utils = require("utils.opts")
-local config = require("yazi.config").config
+local config = require("yazi.config").value
 local tbl_utils = require("utils.table")
-local CallbackMap = require("yazi.callback-map")
+local CallbackMap = require("tui.callback-map")
 local IpcClient = require("yazi.ipc-client")
 local terminal_utils = require("utils.terminal")
 local str_utils = require("utils.string")
@@ -11,77 +13,32 @@ local _info = config.notifier.info
 local _warn = config.notifier.warn
 local _error = config.notifier.error
 
-local M = {}
-
----@alias YaziControllerId string
----@alias YaziUIHooks { show: function, hide: function, focus: function, destroy: function }
 ---@alias YaziFocusedEntry { url: string }
 
----@class YaziController
----@field _id YaziControllerId The id of the controller
+---@class YaziController: TUIController
 ---@field focus? YaziFocusedEntry The currently focused entry
 ---@field preview_visible? boolean Whether the preview pane is visible. Value is nil if unknown
 ---@field _ipc_client YaziIpcClient The ipc client
----@field _extra_args? ShellOpts Extra arguments to pass to yazi
----@field _ui_hooks? YaziUIHooks UI hooks
----@field _extra_env_vars? ShellOpts Extra environment variables to pass to yazi
----@field _prev_win? integer Previous window before opening yazi
----@field _on_exited_subscribers YaziCallbackMap Map of subscribers of the exit event
----@field _started boolean Whether the controller has started
----@field _exited boolean Whether the controller has exited
----@field _job_id string Job ID of the yazi process
 ---@field _events_reader_job_id string Job ID of the events reader process
-local Controller = {}
-Controller.__index = Controller
-Controller.__is_class = true
+local YaziController = {}
+YaziController.__index = YaziController
+YaziController.__is_class = true
+setmetatable(YaziController, { __index = Controller })
 
 -- Index of active controllers
 -- A singleton.
---
----@class YaziControllersIndex
----@field _id_map table<YaziControllerId, YaziController>
----@field most_recent? YaziController
-local ControllersIndex = {
-  _id_map = {},
-  most_recent = nil,
-}
-ControllersIndex.__index = ControllersIndex
-ControllersIndex.__is_class = true
+local yazi_controller_map = ControllerMap.new()
 
--- Retrieve a controller by its ID
---
----@param id YaziControllerId
----@return YaziController | nil
-function ControllersIndex.get(id) return ControllersIndex._id_map[id] end
-
--- Remove a controller by its ID
---
----@param id YaziControllerId
-function ControllersIndex.remove(id) ControllersIndex._id_map[id] = nil end
-
--- Add a controller to the index
---
----@param controller YaziController
-function ControllersIndex.add(controller)
-  ControllersIndex._id_map[controller._id] = controller
-end
-
-M.ControllersIndex = ControllersIndex
-
-M.Controller = Controller
-
----@class YaziCreateControllerOptions
----@field extra_args? ShellOpts
----@field extra_env_vars? ShellOpts
----@field path? string
+---@class YaziCreateControllerOptions: TUICreateControllerOptions
 
 -- Create controller
 --
 ---@param opts? YaziCreateControllerOptions
 ---@return YaziController
-function Controller.new(opts)
+function YaziController.new(opts)
   opts = opts_utils.extend({
-    path = vim.fn.getcwd(),
+    config = require("yazi.config"),
+    index = yazi_controller_map,
   }, opts)
   ---@cast opts YaziCreateControllerOptions
 
@@ -108,105 +65,33 @@ function Controller.new(opts)
     error("only version 0.2.5 is supported")
   end
 
-  local controller_id = uuid_utils.v4()
-  local controller = {
-    _id = controller_id,
-    focus = nil,
-    _ipc_client = IpcClient.new(),
-    _extra_args = opts.extra_args,
-    _ui_hooks = nil,
-    _extra_env_vars = opts.extra_env_vars,
-    _on_exited_subscribers = CallbackMap.new(),
-    _prev_win = vim.api.nvim_get_current_win(),
-    _started = false,
-    _exited = false,
-  }
-  setmetatable(controller, Controller)
-  ControllersIndex.add(controller)
+  local obj = Controller.new(opts)
+  ---@cast obj YaziController
 
-  ---@cast controller YaziController
+  obj._ipc_client = IpcClient.new()
 
-  controller:on_preview_visibility(
-    function(payload) controller.preview_visible = payload.visible end
+  setmetatable(obj, YaziController)
+  yazi_controller_map:add(obj)
+
+  obj:on_preview_visibility(
+    function(payload) obj.preview_visible = payload.visible end
   )
-  controller:on_hover(function(payload) controller.focus = payload end)
+  obj:on_hover(function(payload) obj.focus = payload end)
 
-  return controller
+  return obj
 end
 
 -- Destroy controller
 --
 ---@param self YaziController
-function Controller:_destroy()
-  self._ipc_client:destroy()
-  self._ui_hooks:destroy()
-
-  ControllersIndex.remove(self._id)
-  if ControllersIndex.most_recent == self then
-    ControllersIndex.most_recent = nil
-  end
+function YaziController:_destroy()
+  Controller._destroy(self)
+  self._ui_hooks.destroy()
 end
-
--- Retrieve prev window (before opening yazi)
---
----@return integer
-function Controller:prev_win() return self._prev_win end
-
--- Retrieve prev buffer (before opening yazi)
---
----@return integer
-function Controller:prev_buf()
-  local win = self:prev_win()
-  return vim.api.nvim_win_get_buf(win)
-end
-
--- Retrieve the filepath of the file opened in prev buffer (before opening yazi)
---
----@return string
-function Controller:prev_filepath()
-  return vim.api.nvim_buf_get_name(self:prev_buf())
-end
-
--- Retrieve prev tab (before opening yazi)
---
----@return integer
-function Controller:prev_tab()
-  return vim.api.nvim_win_get_tabpage(self:prev_win())
-end
-
--- Show the UI and focus on it
-function Controller:show_and_focus()
-  if not self._ui_hooks then
-    error("UI hooks missing. Please first set them up")
-  end
-
-  self._ui_hooks.show()
-  self._ui_hooks.focus()
-
-  ControllersIndex.most_recent = self
-end
-
--- Hide the UI
---
----@param opts? { restore_focus?: boolean }
-function Controller:hide(opts)
-  opts = opts_utils.extend({ restore_focus = true }, opts)
-
-  if not self._ui_hooks then
-    error("UI hooks missing. Please first set them up")
-  end
-
-  self._ui_hooks.hide()
-
-  if opts.restore_focus then vim.api.nvim_set_current_win(self:prev_win()) end
-end
-
----@param hooks YaziUIHooks
-function Controller:set_ui_hooks(hooks) self._ui_hooks = hooks end
 
 -- Start the yazi process
-function Controller:start()
-  local args = {
+function YaziController:start()
+  local args = self:_args_extend({
     ["--local-events"] = table.concat({
       "cd",
       "hover",
@@ -222,36 +107,20 @@ function Controller:start()
       "preview-visibility",
     }, ","),
     ["--remote-events"] = "from-nvim", -- make yazi accepts remote events of "from-nvim" kind
-  }
-  args =
-    tbl_utils.tbl_extend({ mode = "error" }, args, config.default_extra_args)
-  args = tbl_utils.tbl_extend({ mode = "error" }, args, self._extra_args)
+  })
+
+  local env_vars = self:_env_vars_extend({
+    ["NVIM_YAZI"] = 1,
+  })
 
   local events_destination = "/tmp/yazi.nvim-" .. self._id
-  local command = "yazi "
+  terminal_utils.system_unsafe("touch " .. events_destination)
+
+  local command = terminal_utils.shell_opts_tostring(env_vars)
+    .. " yazi "
     .. terminal_utils.shell_opts_tostring(args)
     .. " > "
     .. events_destination
-
-  local env_vars = {
-    ["NVIM_YAZI"] = 1,
-  }
-  env_vars = tbl_utils.tbl_extend(
-    { mode = "error" },
-    env_vars,
-    config.default_extra_env_vars
-  )
-  env_vars =
-    tbl_utils.tbl_extend({ mode = "error" }, env_vars, self._extra_env_vars)
-
-  command = ("%s %s"):format(
-    terminal_utils.shell_opts_tostring(env_vars),
-    command
-  )
-
-  self:show_and_focus()
-
-  terminal_utils.system_unsafe("touch " .. events_destination)
 
   local events_reader_job_id =
     vim.fn.jobstart("tail -f " .. events_destination, {
@@ -269,39 +138,22 @@ function Controller:start()
   end
   self._events_reader_job_id = events_reader_job_id
 
-  local job_id = vim.fn.termopen(command, {
-    on_exit = function(job_id, code, event)
-      self._exited = true
-      self._on_exited_subscribers:invoke_all()
-
-      if code == 0 then
-        -- Pass
-      else
-        error("Unexpected exit code: " .. code)
-      end
-
-      self:_destroy()
-    end,
-    on_stdout = function(job_id, ...) end,
-    on_stderr = function(job_id, ...) end,
+  self:_start({
+    command = command,
   })
-  if job_id == 0 or job_id == -1 then error("Failed to start yazi") end
-  self._job_id = job_id
-
-  self._started = true
 end
 
 -- Send a message to the running yazi instance
 --
 ---@param payload any
-function Controller:send(payload) return self._ipc_client:send(payload) end
+function YaziController:send(payload) return self._ipc_client:send(payload) end
 
 -- Subscribe to yazi event
 --
 ---@param event string
 ---@param callback YaziCallback
 ---@return fun(): nil Unsubscribe
-function Controller:subscribe(event, callback)
+function YaziController:subscribe(event, callback)
   return self._ipc_client:subscribe(event, callback)
 end
 
@@ -310,21 +162,23 @@ end
 ---@alias YaziCdEventPayload { tab: string, url: string }
 ---@param callback fun(payload: YaziCdEventPayload)
 ---@return fun(): nil Unsubscribe
-function Controller:on_cd(callback) return self:subscribe("cd", callback) end
+function YaziController:on_cd(callback) return self:subscribe("cd", callback) end
 
 -- Subscribe to the "hover" event
 --
 ---@alias YaziHoverEventPayload { tab: string, url: string }
 ---@param callback fun(payload: YaziHoverEventPayload)
 ---@return fun(): nil Unsubscribe
-function Controller:on_hover(callback) return self:subscribe("hover", callback) end
+function YaziController:on_hover(callback)
+  return self:subscribe("hover", callback)
+end
 
 -- Subscribe to the "rename" event
 --
 ---@alias YaziRenameEventPayload { tab: string, from: string, to: string }
 ---@param callback fun(payload: YaziRenameEventPayload)
 ---@return fun(): nil Unsubscribe
-function Controller:on_rename(callback)
+function YaziController:on_rename(callback)
   return self:subscribe("rename", callback)
 end
 
@@ -333,35 +187,43 @@ end
 ---@alias YaziBulkEventPayload { changes: table<string, string> }
 ---@param callback fun(payload: YaziBulkEventPayload)
 ---@return fun(): nil Unsubscribe
-function Controller:on_bulk(callback) return self:subscribe("bulk", callback) end
+function YaziController:on_bulk(callback)
+  return self:subscribe("bulk", callback)
+end
 
 -- Subscribe to the "yank" event
 --
 ---@alias YaziYankEventPayload { cut: boolean, urls: string[] }
 ---@param callback fun(payload: YaziYankEventPayload)
 ---@return fun(): nil Unsubscribe
-function Controller:on_yank(callback) return self:subscribe("yank", callback) end
+function YaziController:on_yank(callback)
+  return self:subscribe("yank", callback)
+end
 
 -- Subscribe to the "move" event
 --
 ---@alias YaziMoveEventPayload { items: ({ from: string, to: string })[] }
 ---@param callback fun(payload: YaziMoveEventPayload)
 ---@return fun(): nil Unsubscribe
-function Controller:on_move(callback) return self:subscribe("move", callback) end
+function YaziController:on_move(callback)
+  return self:subscribe("move", callback)
+end
 
 -- Subscribe to the "trash" event
 --
 ---@alias YaziTrashEventPayload { urls: string[] }
 ---@param callback fun(payload: YaziTrashEventPayload)
 ---@return fun(): nil Unsubscribe
-function Controller:on_trash(callback) return self:subscribe("trash", callback) end
+function YaziController:on_trash(callback)
+  return self:subscribe("trash", callback)
+end
 
 -- Subscribe to the "delete" event
 --
 ---@alias YaziDeleteEventPayload { urls: string[] }
 ---@param callback fun(payload: YaziDeleteEventPayload)
 ---@return fun(): nil Unsubscribe
-function Controller:on_delete(callback)
+function YaziController:on_delete(callback)
   return self:subscribe("delete", callback)
 end
 
@@ -371,7 +233,9 @@ end
 ---@alias YaziQuitEventPayload { }
 ---@param callback fun(payload: YaziQuitEventPayload)
 ---@return fun(): nil Unsubscribe
-function Controller:on_quit(callback) return self:subscribe("quit", callback) end
+function YaziController:on_quit(callback)
+  return self:subscribe("quit", callback)
+end
 
 -- Subscribe to the custom "open" event
 -- Yazi plugin "nvim.yazi" is required for this event
@@ -379,7 +243,9 @@ function Controller:on_quit(callback) return self:subscribe("quit", callback) en
 ---@alias YaziOpenEventPayload { }
 ---@param callback fun(payload: YaziOpenEventPayload)
 ---@return fun(): nil Unsubscribe
-function Controller:on_open(callback) return self:subscribe("open", callback) end
+function YaziController:on_open(callback)
+  return self:subscribe("open", callback)
+end
 
 -- Subscribe to the custom "scroll-preview" event
 -- Yazi plugin "nvim.yazi" is required for this event
@@ -387,7 +253,7 @@ function Controller:on_open(callback) return self:subscribe("open", callback) en
 ---@alias YaziScrollPreviewEventPayload { value: number }
 ---@param callback fun(payload: YaziScrollPreviewEventPayload)
 ---@return fun(): nil Unsubscribe
-function Controller:on_scroll_preview(callback)
+function YaziController:on_scroll_preview(callback)
   return self:subscribe("scroll-preview", callback)
 end
 
@@ -397,7 +263,7 @@ end
 ---@alias YaziPreviewVisibilityEventPayload { visible: boolean }
 ---@param callback fun(payload: YaziPreviewVisibilityEventPayload)
 ---@return fun(): nil Unsubscribe
-function Controller:on_preview_visibility(callback)
+function YaziController:on_preview_visibility(callback)
   return self:subscribe("preview-visibility", callback)
 end
 
@@ -405,7 +271,7 @@ end
 -- Yazi plugin "nvim.yazi" is required for this event
 --
 ---@param val boolean
-function Controller:set_preview_visibility(val)
+function YaziController:set_preview_visibility(val)
   if self.preview_visible == val then return end
   return self:send({
     type = "preview-visibility",
@@ -415,7 +281,7 @@ end
 
 -- Toggle the visibility of yazi's preview pane by sending a remote event
 -- Yazi plugin "nvim.yazi" is required for this event
-function Controller:toggle_preview_visibility()
+function YaziController:toggle_preview_visibility()
   return self:send({ type = "preview-visibility", value = "toggle" })
 end
 
@@ -423,21 +289,9 @@ end
 -- Yazi plugin "nvim.yazi" is required for this event
 --
 ---@param path string
-function Controller:reveal(path)
+function YaziController:reveal(path)
   -- TODO: add checking for path
   return self:send({ type = "reveal", path = path })
 end
 
-function Controller:started() return self._started end
-
-function Controller:exited() return self._exited end
-
--- Subscribe to the event "exited"
---
----@param callback fun()
----@return fun() Unsubscribe
-function Controller:on_exited(callback)
-  return self._on_exited_subscribers:add_and_return_remove_fn(callback)
-end
-
-return M
+return YaziController

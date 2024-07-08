@@ -2,13 +2,13 @@ local uuid_utils = require("utils.uuid")
 local terminal_utils = require("utils.terminal")
 local uv_utils = require("utils.uv")
 local os_utils = require("utils.os")
-local EventMap = require("yazi.event-map")
+local EventMap = require("tui.event-map")
 local str_utils = require("utils.string")
 
 -- FIX: when yazi is resized/rerendered, a dupilcate hover event is emitted(?)
 
 ---@class YaziIpcClient
----@field _event_map YaziEventMap Map of events to lua callbacks
+---@field _event_map TUIEventMap Map of events to lua callbacks
 ---@field _id string ID of the yazi instance
 ---@field _prev_hover any Previous hover message. For deduplication
 local YaziIpcClient = {}

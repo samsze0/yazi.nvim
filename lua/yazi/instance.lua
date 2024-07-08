@@ -1,7 +1,7 @@
-local Controller = require("yazi.controller").Controller
-local SinglePaneLayout = require("yazi.layout").SinglePaneLayout
-local DualPaneLayout = require("yazi.layout").DualPaneLayout
-local config = require("yazi.config").config
+local Instance = require("tui.instance")
+local YaziController = require("yazi.controller")
+local DualPaneLayout = require("tui.layout").DualPaneLayout
+local config = require("yazi.config").value
 local opts_utils = require("utils.opts")
 local lang_utils = require("utils.lang")
 local terminal_utils = require("utils.terminal")
@@ -13,78 +13,26 @@ local _error = config.notifier.error
 
 local M = {}
 
----@class YaziInstance : YaziController
----@field layout YaziLayout
-local Instance = {}
-Instance.__index = Instance
-Instance.__is_class = true
-setmetatable(Instance, { __index = Controller })
-
-M.Instance = Instance
-
----@class YaziCreateInstanceOptions : YaziCreateControllerOptions
-
----@param opts? YaziCreateInstanceOptions
----@return YaziInstance
-function Instance.new(opts)
-  local obj = Controller.new(opts)
-  setmetatable(obj, Instance)
-  ---@cast obj YaziInstance
-  return obj
-end
-
--- Configure controller UI hooks
-function Instance:_setup_controller_ui_hooks()
-  self:set_ui_hooks({
-    show = function() self.layout:show() end,
-    hide = function() self.layout:hide() end,
-    focus = function() self.layout.main_popup:focus() end,
-    destroy = function() self.layout:unmount() end,
-  })
-end
-
----@class YaziBasicInstance: YaziInstance
----@field layout YaziSinglePaneLayout
-local BasicInstance = {}
-BasicInstance.__index = BasicInstance
-BasicInstance.__is_class = true
-setmetatable(BasicInstance, { __index = Instance })
-
-M.BasicInstance = BasicInstance
-
----@param opts? YaziCreateInstanceOptions
----@return YaziBasicInstance
-function BasicInstance.new(opts)
-  local obj = Instance.new(opts)
-  setmetatable(obj, BasicInstance)
-  ---@cast obj YaziBasicInstance
-
-  local layout = SinglePaneLayout.new({})
-  obj.layout = layout
-
-  Instance._setup_controller_ui_hooks(obj)
-
-  return obj
-end
-
----@class YaziPowerInstance: YaziInstance
----@field layout YaziDualPaneLayout
+---@class YaziPowerInstance: YaziController
+---@field layout TUIDualPaneLayout
 local PowerInstance = {}
 PowerInstance.__index = PowerInstance
 PowerInstance.__is_class = true
-setmetatable(PowerInstance, { __index = Instance })
+setmetatable(PowerInstance, { __index = YaziController })
 
 M.PowerInstance = PowerInstance
 
----@param opts? YaziCreateInstanceOptions
+---@param opts? YaziCreateControllerOptions
 ---@return YaziPowerInstance
 function PowerInstance.new(opts)
-  local obj = Instance.new(opts)
+  local obj = YaziController.new(opts)
   setmetatable(obj, PowerInstance)
+  ---@diagnostic disable-next-line: cast-type-mismatch
   ---@cast obj YaziPowerInstance
 
-  local layout = DualPaneLayout.new({})
-  obj.layout = layout
+  obj.layout = DualPaneLayout.new({
+    config = obj._config,
+  })
 
   obj:_setup_filepreview({})
   Instance._setup_controller_ui_hooks(obj)
@@ -131,6 +79,8 @@ function PowerInstance:_setup_filepreview(opts)
   self:on_hover(function(payload)
     -- Clear existing preview
     self.layout.side_popup:set_lines({})
+
+    -- TODO: move logic to utils
 
     local type = vim.fn.getftype(payload.url)
     if type ~= "file" then
