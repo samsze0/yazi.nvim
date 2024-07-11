@@ -1,7 +1,10 @@
-local setup = require("yazi.config").setup
+local Config = require("yazi.config")
 
 local M = {}
 
-M.setup = setup
+---@param config? YaziConfig.config
+M.setup = function(config)
+  Config:setup(config)
+end
 
 return M
