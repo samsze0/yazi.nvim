@@ -1,4 +1,4 @@
-local Instance = require("tui.instance")
+local BaseInstanceTrait = require("tui.instance-trait")
 local YaziController = require("yazi.controller")
 local DualPaneLayout = require("tui.layout").DualPaneLayout
 local config = require("yazi.config").value
@@ -35,7 +35,7 @@ function PowerInstance.new(opts)
   })
 
   obj:_setup_filepreview({})
-  Instance._setup_controller_ui_hooks(obj)
+  BaseInstanceTrait.setup_controller_ui_hooks(obj)
 
   return obj
 end
