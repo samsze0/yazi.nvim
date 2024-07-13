@@ -6,6 +6,7 @@ local opts_utils = require("utils.opts")
 local lang_utils = require("utils.lang")
 local terminal_utils = require("utils.terminal")
 local tbl_utils = require("utils.table")
+local terminal_filetype = require("terminal-filetype")
 
 local _info = config.notifier.info
 local _warn = config.notifier.warn
@@ -40,20 +41,36 @@ function PowerInstance.new(opts)
   return obj
 end
 
+-- FIX: main pooup layout "breaks" when resized
+--
 -- Show preview in Neovim instead of in yazi
 --
 ---@param val boolean
 function PowerInstance:show_preview_in_nvim(val)
   if self.preview_visible == not val then return end
 
-  -- FIX: main pooup layout "breaks" when resized
-  if val then
-    -- self.layout:restore_layout()
-  else
-    -- self.layout:maximise_popup("main")
-  end
+  -- if val then
+  --   self.layout:restore_layout()
+  -- else
+  --   self.layout:maximise_popup("main")
+  -- end
   self:set_preview_visibility(not val)
 end
+
+-- TODO: move to config
+local filetypes_to_skip_preview = {}
+---@type ShellOpts
+local eza_options = {
+  ["--long"] = true,
+  ["--no-permissions"] = true,
+  ["--no-filesize"] = true,
+  ["--no-time"] = true,
+  ["--no-user"] = true,
+  ["--group-directories-first"] = true,
+  ["--all"] = true,
+  ["--icons"] = "always",
+  ["--color"] = "always"
+}
 
 -- Configure file preview
 --
@@ -74,13 +91,32 @@ function PowerInstance:_setup_filepreview(opts)
   --   self.layout.side_popup:show_file_content(focus.url)
   -- end)
 
-  local filetypes_to_skip_preview = {}
+  -- TODO: use native preview of yazi instead of exa
+  if vim.fn.executable("eza") ~= 1 then
+    error("eza is not installed")
+  end
 
   self:on_hover(function(payload)
+    self:show_preview_in_nvim(true)
+
+    self.layout.side_popup:set_lines({})
+
+    local type = vim.fn.getftype(payload.url)
+    if type == "dir" then
+      local command = ("eza %s %s"):format(payload.url, terminal_utils.shell_opts_tostring(eza_options))
+      local eza_output = terminal_utils.systemlist_unsafe(command, {
+        trim_endline = true,
+      })
+
+      self.layout.side_popup:set_lines(eza_output, { filetype = "txt" })
+      terminal_filetype.refresh_highlight(self.layout.side_popup.bufnr)
+      return
+    end
+
     local success = self.layout.side_popup:show_file_content(payload.url, {
       exclude_filetypes = filetypes_to_skip_preview
     })
-    self:show_preview_in_nvim(success)
+    -- self:show_preview_in_nvim(success)
   end)
 end
 

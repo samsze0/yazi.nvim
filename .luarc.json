@@ -10,7 +10,8 @@
       "../utils.nvim/lua",
       ".test/external-dep/nui.nvim/lua",
       "../jumplist.nvim/lua",
-      "../tui.nvim/lua"
+      "../tui.nvim/lua",
+      "../terminal.nvim/lua"
     ],
     "checkThirdParty": false
   },

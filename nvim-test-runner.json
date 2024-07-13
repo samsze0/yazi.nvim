@@ -13,6 +13,9 @@
     },
     {
       "uri": "file:../tui.nvim"
+    },
+    {
+      "uri": "file:../terminal.nvim"
     }
   ]
 }

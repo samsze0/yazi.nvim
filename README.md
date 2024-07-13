@@ -35,6 +35,8 @@ yazi:start()
 
 ## TODO
 
+- Dynamically switch between nvim preview and yazi preview (and ditch usage of eza)
+
 ## License
 
 MIT
