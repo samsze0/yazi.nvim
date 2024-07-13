@@ -71,7 +71,6 @@ function YaziController.new(opts)
   obj._ipc_client = IpcClient.new()
 
   setmetatable(obj, YaziController)
-  yazi_controller_map:add(obj)
 
   obj:on_preview_visibility(
     function(payload) obj.preview_visible = payload.visible end
@@ -86,7 +85,6 @@ end
 ---@param self YaziController
 function YaziController:_destroy()
   Controller._destroy(self)
-  self._ui_hooks.destroy()
 end
 
 -- Start the yazi process
