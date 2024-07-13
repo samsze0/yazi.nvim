@@ -6,7 +6,6 @@ local opts_utils = require("utils.opts")
 local lang_utils = require("utils.lang")
 local terminal_utils = require("utils.terminal")
 local tbl_utils = require("utils.table")
-local terminal_filetype = require("terminal-filetype")
 
 local _info = config.notifier.info
 local _warn = config.notifier.warn
@@ -69,7 +68,7 @@ local eza_options = {
   ["--group-directories-first"] = true,
   ["--all"] = true,
   ["--icons"] = "always",
-  ["--color"] = "always"
+  ["--color"] = "never"
 }
 
 -- Configure file preview
@@ -108,8 +107,9 @@ function PowerInstance:_setup_filepreview(opts)
         trim_endline = true,
       })
 
-      self.layout.side_popup:set_lines(eza_output, { filetype = "txt" })
-      terminal_filetype.refresh_highlight(self.layout.side_popup.bufnr)
+      -- FIX: ansi colors are not displayed correctly
+      -- FIX: terminal.vim syntax have no effect after switching filetype back and forth
+      self.layout.side_popup:set_lines(eza_output, { filetype = "terminal" })
       return
     end
 
