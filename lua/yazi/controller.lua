@@ -83,9 +83,7 @@ end
 -- Destroy controller
 --
 ---@param self YaziController
-function YaziController:_destroy()
-  Controller._destroy(self)
-end
+function YaziController:_destroy() Controller._destroy(self) end
 
 -- Start the yazi process
 function YaziController:start()

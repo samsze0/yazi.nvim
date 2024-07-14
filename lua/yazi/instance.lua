@@ -68,7 +68,7 @@ local eza_options = {
   ["--group-directories-first"] = true,
   ["--all"] = true,
   ["--icons"] = "always",
-  ["--color"] = "never"
+  ["--color"] = "never",
 }
 
 -- Configure file preview
@@ -91,9 +91,7 @@ function PowerInstance:_setup_filepreview(opts)
   -- end)
 
   -- TODO: use native preview of yazi instead of exa
-  if vim.fn.executable("eza") ~= 1 then
-    error("eza is not installed")
-  end
+  if vim.fn.executable("eza") ~= 1 then error("eza is not installed") end
 
   self:on_hover(function(payload)
     self:show_preview_in_nvim(true)
@@ -102,7 +100,10 @@ function PowerInstance:_setup_filepreview(opts)
 
     local type = vim.fn.getftype(payload.url)
     if type == "dir" then
-      local command = ("eza %s %s"):format(payload.url, terminal_utils.shell_opts_tostring(eza_options))
+      local command = ("eza %s %s"):format(
+        payload.url,
+        terminal_utils.shell_opts_tostring(eza_options)
+      )
       local eza_output = terminal_utils.systemlist_unsafe(command, {
         trim_endline = true,
       })
@@ -114,7 +115,7 @@ function PowerInstance:_setup_filepreview(opts)
     end
 
     local success = self.layout.side_popup:show_file_content(payload.url, {
-      exclude_filetypes = filetypes_to_skip_preview
+      exclude_filetypes = filetypes_to_skip_preview,
     })
     -- self:show_preview_in_nvim(success)
   end)
