@@ -121,12 +121,19 @@ function YaziController:start()
   local events_reader_job_id =
     vim.fn.jobstart("tail -f " .. events_destination, {
       on_stdout = function(job_id, messages)
-        for _, m in ipairs(vim.list_slice(messages, nil, #messages - 1)) do
-          self._ipc_client:on_message(m)
-        end
+        xpcall(
+          function()
+            for _, m in ipairs(vim.list_slice(messages, nil, #messages - 1)) do
+              self._ipc_client:on_message(m)
+            end
+          end,
+          function(err)
+            _error(debug.traceback("Error processing yazi events: " .. err))
+          end
+        )
       end,
       on_stderr = function(job_id, messages)
-        vim.error("Error reading yazi events: ", table.concat(messages, "\n"))
+        _error("Error reading yazi events: ", table.concat(messages, "\n"))
       end,
     })
   if events_reader_job_id == 0 or events_reader_job_id == -1 then

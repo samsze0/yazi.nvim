@@ -4,6 +4,11 @@ local uv_utils = require("utils.uv")
 local os_utils = require("utils.os")
 local EventMap = require("tui.event-map")
 local str_utils = require("utils.string")
+local config = require("yazi.config").value
+
+local _info = config.notifier.info
+local _warn = config.notifier.warn
+local _error = config.notifier.error
 
 -- FIX: when yazi is resized/rerendered, a dupilcate hover event is emitted(?)
 
@@ -28,7 +33,7 @@ end
 ---@param payload any
 function YaziIpcClient:send(payload)
   -- FIX: error not being reported
-  local cmd = ("ya pub from-nvim %s --json %s"):format(
+  local cmd = ("ya pub %s from-nvim --json %s"):format(
     self._id,
     vim.fn.shellescape(vim.json.encode(payload))
   )
