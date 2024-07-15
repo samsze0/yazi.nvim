@@ -33,7 +33,7 @@ end
 ---@param payload any
 function YaziIpcClient:send(payload)
   -- FIX: error not being reported
-  local cmd = ("ya pub %s from-nvim --json %s"):format(
+  local cmd = ("ya pub from-nvim %s --json %s"):format(
     self._id,
     vim.fn.shellescape(vim.json.encode(payload))
   )
