@@ -8,6 +8,7 @@ local CallbackMap = require("tui.callback-map")
 local IpcClient = require("yazi.ipc-client")
 local terminal_utils = require("utils.terminal")
 local str_utils = require("utils.string")
+local uv_utils = require("utils.uv")
 
 local _info = config.notifier.info
 local _warn = config.notifier.warn
@@ -171,9 +172,19 @@ function YaziController:on_cd(callback) return self:subscribe("cd", callback) en
 --
 ---@alias YaziHoverEventPayload { tab: string, url: string }
 ---@param callback fun(payload: YaziHoverEventPayload)
+---@param opts? { debounce_ms?: number }
 ---@return fun(): nil Unsubscribe
-function YaziController:on_hover(callback)
-  return self:subscribe("hover", callback)
+function YaziController:on_hover(callback, opts)
+  opts = opts_utils.extend({
+    debounce_ms = config.hover_event_debounce_ms,
+  }, opts)
+
+  local debounced_callback = uv_utils.debounce(
+    function(payload) callback(payload) end,
+    opts.debounce_ms,
+    { run_in_main_loop = true }
+  )
+  return self:subscribe("hover", debounced_callback)
 end
 
 -- Subscribe to the "rename" event
@@ -255,9 +266,19 @@ end
 --
 ---@alias YaziScrollPreviewEventPayload { value: number }
 ---@param callback fun(payload: YaziScrollPreviewEventPayload)
+---@param opts? { debounce_ms?: number }
 ---@return fun(): nil Unsubscribe
-function YaziController:on_scroll_preview(callback)
-  return self:subscribe("scroll-preview", callback)
+function YaziController:on_scroll_preview(callback, opts)
+  opts = opts_utils.extend({
+    debounce_ms = config.scroll_preview_event_debounce_ms,
+  }, opts)
+
+  local debounced_callback = uv_utils.debounce(
+    function(payload) callback(payload) end,
+    opts.debounce_ms,
+    { run_in_main_loop = true }
+  )
+  return self:subscribe("scroll-preview", debounced_callback)
 end
 
 -- Subscribe to the custom "preview-visibility" event
