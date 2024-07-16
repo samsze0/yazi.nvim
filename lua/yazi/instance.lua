@@ -1,11 +1,15 @@
 local BaseInstanceTrait = require("tui.instance-trait")
 local YaziController = require("yazi.controller")
-local DualPaneLayout = require("tui.layout").DualPaneLayout
+local Layout = require("tui.layout")
 local config = require("yazi.config").value
 local opts_utils = require("utils.opts")
+local MainPopup = require("tui.popup").MainPopup
+local SidePopup = require("tui.popup").SidePopup
+local HelpPopup = require("tui.popup").HelpPopup
 local lang_utils = require("utils.lang")
 local terminal_utils = require("utils.terminal")
 local tbl_utils = require("utils.table")
+local NuiLayout = require("nui.layout")
 
 local _info = config.notifier.info
 local _warn = config.notifier.warn
@@ -13,8 +17,11 @@ local _error = config.notifier.error
 
 local M = {}
 
+---@class YaziPowerInstance.layout : TUILayout
+---@field side_popups { preview: TUISidePopup }
+
 ---@class YaziPowerInstance: YaziController
----@field layout TUIDualPaneLayout
+---@field layout YaziPowerInstance.layout
 local PowerInstance = {}
 PowerInstance.__index = PowerInstance
 PowerInstance.__is_class = true
@@ -30,9 +37,43 @@ function PowerInstance.new(opts)
   ---@diagnostic disable-next-line: cast-type-mismatch
   ---@cast obj YaziPowerInstance
 
-  obj.layout = DualPaneLayout.new({
+  local main_popup = MainPopup.new({
     config = obj._config,
   })
+  local preview_popup = SidePopup.new({
+    popup_opts = {
+      win_options = {
+        number = true,
+        cursorline = true,
+      },
+    },
+    config = obj._config,
+  })
+  local help_popup = HelpPopup.new({
+    config = obj._config,
+  })
+
+  local layout = Layout.new({
+    config = obj._config,
+    main_popup = main_popup,
+    side_popups = { preview = preview_popup },
+    help_popup = help_popup,
+    layout_config = function(layout)
+      ---@cast layout YaziPowerInstance.layout
+
+      return NuiLayout.Box(
+        tbl_utils.non_nil({
+          main_popup and NuiLayout.Box(main_popup, { grow = 1 }) or nil,
+          preview_popup.should_show
+              and NuiLayout.Box(preview_popup, { grow = 1 })
+            or nil,
+        }),
+        { dir = "row" }
+      )
+    end,
+  })
+  ---@cast layout YaziPowerInstance.layout
+  obj.layout = layout
 
   obj:_setup_filepreview({})
   BaseInstanceTrait.setup_controller_ui_hooks(obj)
@@ -96,7 +137,7 @@ function PowerInstance:_setup_filepreview(opts)
   self:on_hover(function(payload)
     self:show_preview_in_nvim(true)
 
-    self.layout.side_popup:set_lines({})
+    self.layout.side_popups.preview:set_lines({})
 
     local type = vim.fn.getftype(payload.url)
     if type == "dir" then
@@ -110,13 +151,17 @@ function PowerInstance:_setup_filepreview(opts)
 
       -- FIX: ansi colors are not displayed correctly
       -- FIX: terminal.vim syntax have no effect after switching filetype back and forth
-      self.layout.side_popup:set_lines(eza_output, { filetype = "terminal" })
+      self.layout.side_popups.preview:set_lines(
+        eza_output,
+        { filetype = "terminal" }
+      )
       return
     end
 
-    local success = self.layout.side_popup:show_file_content(payload.url, {
-      exclude_filetypes = filetypes_to_skip_preview,
-    })
+    local success =
+      self.layout.side_popups.preview:show_file_content(payload.url, {
+        exclude_filetypes = filetypes_to_skip_preview,
+      })
     -- self:show_preview_in_nvim(success)
   end)
 end
