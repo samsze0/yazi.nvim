@@ -53,6 +53,9 @@ function PowerInstance.new(opts)
     config = obj._config,
   })
 
+  main_popup.right = preview_popup
+  preview_popup.left = main_popup
+
   local layout = Layout.new({
     config = obj._config,
     main_popup = main_popup,
@@ -61,12 +64,14 @@ function PowerInstance.new(opts)
     layout_config = function(layout)
       ---@cast layout YaziPowerInstance.layout
 
+      -- FIX: NuiPopup does not cater for removing popup from layout
       return NuiLayout.Box(
         tbl_utils.non_nil({
-          main_popup and NuiLayout.Box(main_popup, { grow = 1 }) or nil,
+          main_popup.should_show and NuiLayout.Box(main_popup, { grow = 10 })
+            or NuiLayout.Box(main_popup, { grow = 1 }),
           preview_popup.should_show
-              and NuiLayout.Box(preview_popup, { grow = 1 })
-            or nil,
+              and NuiLayout.Box(preview_popup, { grow = 10 })
+            or NuiLayout.Box(preview_popup, { grow = 1 }),
         }),
         { dir = "row" }
       )
