@@ -1,11 +1,11 @@
-local BaseInstanceMixin = require("tui.instance-mixin")
+local TUIBaseInstanceMixin = require("tui.instance-mixin")
 local YaziController = require("yazi.controller")
-local Layout = require("tui.layout")
+local TUILayout = require("tui.layout")
 local config = require("yazi.config").value
 local opts_utils = require("utils.opts")
-local MainPopup = require("tui.popup").MainPopup
-local SidePopup = require("tui.popup").SidePopup
-local HelpPopup = require("tui.popup").HelpPopup
+local TUIMainPopup = require("tui.popup").MainPopup
+local TUISidePopup = require("tui.popup").SidePopup
+local TUIHelpPopup = require("tui.popup").HelpPopup
 local lang_utils = require("utils.lang")
 local terminal_utils = require("utils.terminal")
 local tbl_utils = require("utils.table")
@@ -37,10 +37,10 @@ function PowerInstance.new(opts)
   ---@diagnostic disable-next-line: cast-type-mismatch
   ---@cast obj YaziPowerInstance
 
-  local main_popup = MainPopup.new({
+  local main_popup = TUIMainPopup.new({
     config = obj._config,
   })
-  local preview_popup = SidePopup.new({
+  local preview_popup = TUISidePopup.new({
     popup_opts = {
       win_options = {
         number = true,
@@ -49,14 +49,14 @@ function PowerInstance.new(opts)
     },
     config = obj._config,
   })
-  local help_popup = HelpPopup.new({
+  local help_popup = TUIHelpPopup.new({
     config = obj._config,
   })
 
   main_popup.right = preview_popup
   preview_popup.left = main_popup
 
-  local layout = Layout.new({
+  local layout = TUILayout.new({
     config = obj._config,
     main_popup = main_popup,
     side_popups = { preview = preview_popup },
@@ -81,7 +81,7 @@ function PowerInstance.new(opts)
   obj.layout = layout
 
   obj:_setup_filepreview({})
-  BaseInstanceMixin.setup_controller_ui_hooks(obj)
+  TUIBaseInstanceMixin.setup_controller_ui_hooks(obj) --- @diagnostic disable-line: param-type-mismatch
 
   return obj
 end
