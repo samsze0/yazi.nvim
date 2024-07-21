@@ -15,7 +15,15 @@ With lazy.nvim:
 {
     "samsze0/yazi.nvim",
     config = function()
-        require("yazi").setup({})
+        require("yazi").setup({
+          keymaps = {
+            open = "<f2>",
+            hide = "<f2>",
+            open_in_new_window = "<C-w>",
+            open_in_new_tab = "<C-t>",
+            reveal_current_file = "<f3>",
+          },
+        })
     end,
     dependencies = {
         "samsze0/tui.nvim",
@@ -24,13 +32,6 @@ With lazy.nvim:
         "samsze0/jumplist.nvim"  -- Optional
     }
 }
-```
-
-```lua
-local YaziPowerInstance = require("yazi.instance").PowerInstance
-
-local yazi = YaziPowerInstance.new({})
-yazi:start()
 ```
 
 ## TODO
