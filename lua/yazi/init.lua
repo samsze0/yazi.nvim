@@ -10,7 +10,11 @@ M.setup = function(config) Config:setup(config) end
 local instance
 
 -- Open yazi, create a singleton instance if it does not exist yet
-function M.open()
+--
+-- @param opts? { hide_keymap?: string }
+function M.open(opts)
+  opts = opts or {}
+
   local current_win = vim.api.nvim_get_current_win()
 
   if not instance then
@@ -24,16 +28,16 @@ function M.open()
     instance:on_quit(function() instance:hide() end)
     instance:on_exited(function() instance = nil end)
     instance:start()
+
+    instance.layout.main_popup:map(
+      "<f3>",
+      "Hide",
+      function() instance:hide() end
+    )
   else
     instance:show_and_focus()
     instance._prev_win = current_win
   end
-end
-
--- Hide yazi
-function M.hide()
-  if not instance then return end
-  instance:hide()
 end
 
 -- Reveal the current file in yazi
