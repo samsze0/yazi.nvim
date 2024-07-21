@@ -1,9 +1,17 @@
 local Config = require("tui.config")
 local opts_utils = require("utils.opts")
 
+---@class YaziKeymapsConfig : TUIKeymapsConfig
+---@field open string
+---@field hide string
+---@field reveal_current_file? string
+---@field open_in_new_tab? string
+---@field open_in_new_window? string
+
 ---@class YaziConfig.config : TUIConfig.config
 ---@field hover_event_debounce_ms? number
 ---@field scroll_preview_event_debounce_ms? number
+---@field keymaps YaziKeymapsConfig
 
 ---@class YaziConfig: TUIConfig
 ---@field value YaziConfig.config
@@ -25,7 +33,7 @@ function YaziConfig.new()
   return obj
 end
 
----@param config? YaziConfig.config
+---@param config YaziConfig.config
 function YaziConfig:setup(config)
   self.value = opts_utils.deep_extend(self.value, config)
 end
