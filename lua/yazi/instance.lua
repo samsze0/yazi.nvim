@@ -146,7 +146,7 @@ function PowerInstance:_setup_filepreview(opts)
 
     local type = vim.fn.getftype(payload.url)
     if type == "dir" then
-      local command = ("eza %s %s"):format(
+      local command = ("eza '%s' %s"):format(
         payload.url,
         terminal_utils.shell_opts_tostring(eza_options)
       )
