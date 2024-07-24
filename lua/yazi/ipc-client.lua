@@ -7,8 +7,11 @@ local str_utils = require("utils.string")
 local config = require("yazi.config").value
 
 local _info = config.notifier.info
+---@cast _info -nil
 local _warn = config.notifier.warn
+---@cast _warn -nil
 local _error = config.notifier.error
+---@cast _error -nil
 
 -- FIX: when yazi is resized/rerendered, a dupilcate hover event is emitted(?)
 
