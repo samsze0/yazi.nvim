@@ -1,11 +1,13 @@
 local TUIBaseInstanceMixin = require("tui.instance-mixin")
 local YaziController = require("yazi.controller")
-local TUILayout = require("tui.layout")
+local Layout = require("tui.layout").Layout
+local OverlayPopupSettings = require("tui.layout").OverlayPopupSettings
+local UnderlayPopupSettings = require("tui.layout").UnderlayPopupSettings
 local config = require("yazi.config").value
 local opts_utils = require("utils.opts")
-local TUIMainPopup = require("tui.popup").MainPopup
-local TUISidePopup = require("tui.popup").SidePopup
-local TUIHelpPopup = require("tui.popup").HelpPopup
+local TUIPopup = require("tui.popup").TUI
+local UnderlayPopup = require("tui.popup").Underlay
+local HelpPopup = require("tui.popup").Help
 local lang_utils = require("utils.lang")
 local terminal_utils = require("utils.terminal")
 local tbl_utils = require("utils.table")
@@ -21,7 +23,7 @@ local _error = config.notifier.error
 local M = {}
 
 ---@class YaziPowerInstance.layout : TUILayout
----@field side_popups { preview: TUISidePopup }
+---@field underlay_popups { main: TUITUIPopup, preview: TUIUnderlayPopup }
 
 ---@class YaziPowerInstance: YaziController
 ---@field layout YaziPowerInstance.layout
@@ -40,11 +42,11 @@ function PowerInstance.new(opts)
   ---@diagnostic disable-next-line: cast-type-mismatch
   ---@cast obj YaziPowerInstance
 
-  local main_popup = TUIMainPopup.new({
+  local main_popup = TUIPopup.new({
     config = obj._config,
   })
-  local preview_popup = TUISidePopup.new({
-    popup_opts = {
+  local preview_popup = UnderlayPopup.new({
+    nui_popup_opts = {
       win_options = {
         number = true,
         cursorline = true,
@@ -52,26 +54,37 @@ function PowerInstance.new(opts)
     },
     config = obj._config,
   })
-  local help_popup = TUIHelpPopup.new({
+  local help_popup = HelpPopup.new({
     config = obj._config,
   })
 
-  main_popup.right = preview_popup
-  preview_popup.left = main_popup
+  local main_popup_settings = UnderlayPopupSettings.new({
+    right = preview_popup
+  })
+  local preview_popup_settings = UnderlayPopupSettings.new({
+    left = main_popup
+  })
 
-  local layout = TUILayout.new({
+  local layout = Layout.new({
     config = obj._config,
-    main_popup = main_popup,
-    side_popups = { preview = preview_popup },
-    help_popup = help_popup,
-    other_overlay_popups = {},
+    underlay_popups = {
+      main = main_popup,
+      preview = preview_popup,
+    },
+    overlay_popups = {
+      help = help_popup,
+    },
+    underlay_popups_settings = {
+      main = main_popup_settings,
+      preview = preview_popup_settings,
+    },
     box_fn = function()
       -- FIX: NuiPopup does not cater for removing popup from layout
       return NuiLayout.Box({
-        NuiLayout.Box(main_popup, { grow = main_popup.visible and 1 or 0 }),
+        NuiLayout.Box(main_popup:get_nui_popup(), { grow = main_popup_settings.visible and 1 or 0 }),
         NuiLayout.Box(
-          preview_popup,
-          { grow = preview_popup.visible and 1 or 0 }
+          preview_popup:get_nui_popup(),
+          { grow = preview_popup_settings.visible and 1 or 0 }
         ),
       }, { dir = "row" })
     end,
@@ -138,10 +151,12 @@ function PowerInstance:_setup_filepreview(opts)
   -- TODO: use native preview of yazi instead of exa
   if vim.fn.executable("eza") ~= 1 then error("eza is not installed") end
 
+  local preview_popup = self.layout.underlay_popups.preview
+
   self:on_hover(function(payload)
     self:show_preview_in_nvim(true)
 
-    self.layout.side_popups.preview:set_lines({})
+    preview_popup:set_lines({})
 
     local type = vim.fn.getftype(payload.url)
     if type == "dir" then
@@ -155,7 +170,7 @@ function PowerInstance:_setup_filepreview(opts)
 
       -- FIX: ansi colors are not displayed correctly
       -- FIX: terminal.vim syntax have no effect after switching filetype back and forth
-      self.layout.side_popups.preview:set_lines(
+      preview_popup:set_lines(
         eza_output,
         { filetype = "terminal" }
       )
@@ -163,7 +178,7 @@ function PowerInstance:_setup_filepreview(opts)
     end
 
     local success =
-      self.layout.side_popups.preview:show_file_content(payload.url, {
+      preview_popup:show_file_content(payload.url, {
         exclude_filetypes = filetypes_to_skip_preview,
       })
     -- self:show_preview_in_nvim(success)

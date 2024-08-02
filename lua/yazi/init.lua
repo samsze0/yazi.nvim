@@ -43,18 +43,20 @@ M.setup = function(config)
         vim.cmd(([[edit %s]]):format(instance.focus.url))
       end)
 
+      local main_popup = instance.layout.underlay_popups.main
+
       instance:on_quit(function() instance:hide() end)
       instance:on_exited(function() instance = nil end)
       instance:start()
 
-      instance.layout.main_popup:map(
+      main_popup:map(
         Config.value.keymaps.hide,
         "Hide",
         function() instance:hide() end
       )
 
       if Config.value.keymaps.reveal_current_file then
-        instance.layout.main_popup:map(
+        main_popup:map(
           Config.value.keymaps.reveal_current_file,
           "Reveal current file",
           reveal_current_file
@@ -62,7 +64,7 @@ M.setup = function(config)
       end
 
       if Config.value.keymaps.open_in_new_tab then
-        instance.layout.main_popup:map(
+        main_popup:map(
           Config.value.keymaps.open_in_new_tab,
           "Open in new tab",
           open_in_new_tab
@@ -70,7 +72,7 @@ M.setup = function(config)
       end
 
       if Config.value.keymaps.open_in_new_window then
-        instance.layout.main_popup:map(
+        main_popup:map(
           Config.value.keymaps.open_in_new_window,
           "Open in new window",
           open_in_new_window

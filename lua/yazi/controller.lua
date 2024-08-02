@@ -137,7 +137,7 @@ function YaziController:start()
         )
       end,
       on_stderr = function(job_id, messages)
-        _error("Error reading yazi events: ", table.concat(messages, "\n"))
+        _error("Error reading yazi events: " .. table.concat(messages, "\n"))
       end,
     })
   if events_reader_job_id == 0 or events_reader_job_id == -1 then
