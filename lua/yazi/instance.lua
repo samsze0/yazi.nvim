@@ -59,10 +59,10 @@ function PowerInstance.new(opts)
   })
 
   local main_popup_settings = UnderlayPopupSettings.new({
-    right = preview_popup
+    right = preview_popup,
   })
   local preview_popup_settings = UnderlayPopupSettings.new({
-    left = main_popup
+    left = main_popup,
   })
 
   local layout = Layout.new({
@@ -71,22 +71,26 @@ function PowerInstance.new(opts)
       main = main_popup,
       preview = preview_popup,
     },
-    overlay_popups = {
-      help = help_popup,
-    },
+    -- overlay_popups = {
+    --   help = help_popup,
+    -- },
     underlay_popups_settings = {
       main = main_popup_settings,
       preview = preview_popup_settings,
     },
     box_fn = function()
       -- FIX: NuiPopup does not cater for removing popup from layout
-      return NuiLayout.Box({
-        NuiLayout.Box(main_popup:get_nui_popup(), { grow = main_popup_settings.visible and 1 or 0 }),
-        NuiLayout.Box(
-          preview_popup:get_nui_popup(),
-          { grow = preview_popup_settings.visible and 1 or 0 }
-        ),
-      }, { dir = "row" })
+      return NuiLayout.Box(
+        tbl_utils.non_false({
+          main_popup_settings.visible
+              and NuiLayout.Box(main_popup:get_nui_popup(), { grow = 1 })
+            or false,
+          preview_popup_settings.visible
+              and NuiLayout.Box(preview_popup:get_nui_popup(), { grow = 1 })
+            or false,
+        }),
+        { dir = "row" }
+      )
     end,
   })
   ---@cast layout YaziPowerInstance.layout
@@ -170,17 +174,13 @@ function PowerInstance:_setup_filepreview(opts)
 
       -- FIX: ansi colors are not displayed correctly
       -- FIX: terminal.vim syntax have no effect after switching filetype back and forth
-      preview_popup:set_lines(
-        eza_output,
-        { filetype = "terminal" }
-      )
+      preview_popup:set_lines(eza_output, { filetype = "terminal" })
       return
     end
 
-    local success =
-      preview_popup:show_file_content(payload.url, {
-        exclude_filetypes = filetypes_to_skip_preview,
-      })
+    local success = preview_popup:show_file_content(payload.url, {
+      exclude_filetypes = filetypes_to_skip_preview,
+    })
     -- self:show_preview_in_nvim(success)
   end)
 end
