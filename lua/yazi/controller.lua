@@ -65,8 +65,8 @@ function YaziController.new(opts)
   if not major or not minor or not patch then
     error("fail to get yazi version")
   end
-  if major ~= "0" or minor ~= "2" or patch ~= "5" then
-    error("only version 0.2.5 is supported")
+  if major ~= "0" or minor ~= "3" or patch ~= "3" then
+    error("only version 0.3.3 is supported")
   end
 
   local obj = Controller.new(opts)
